@@ -1,0 +1,112 @@
+from rsf.proj import *
+import sys, os
+
+# compile project
+proj = Project()
+
+# import modules
+RSFPATH = proj.get('RSFSRC')
+print(f"RSFPATH: {RSFPATH}")
+sys.path.append(os.getenv('RSFSRC')+'/book/Recipes')
+
+# import modules
+import math, fdmod, encode, wemig, stiffness
+
+# compile modeling code
+cuda_progs = 'amodelpo'
+exefile  = 'sfamodelpo.x'
+
+CTP = proj.get('CUDA_TOOLKIT_PATH')
+NVCC = proj.get('NVCC')
+print(f'CTP:{CTP}\nNVCC:{NVCC}')
+
+CTP = proj.get('CUDA_TOOLKIT_PATH')
+NVCC = proj.get('NVCC')
+print(f'CTP:{CTP}\nNVCC:{NVCC}')
+
+proj.Append(LIBS=[proj.get('DYNLIB','')+'rsf'],
+           CPPPATH=['../../include'],
+           LIBPATH=['../../lib'])
+
+if CTP:
+    proj.Append(LIBS=['cudart','cufft','cusparse'],
+               LIBPATH=filter(os.path.isdir,[os.path.join(CTP,'lib64'),
+                                             os.path.join(CTP,'lib')]))
+
+cuda_mains = Split(cuda_progs)
+for prog in cuda_mains:
+    if CTP and NVCC:
+        cfile = proj.Command(prog+'.c','M'+prog+'.cu','cp $SOURCE $TARGET')
+        cc = proj.get('CC')
+        cflags = '-prec-div=true -arch=sm_60 --x=cu'
+        ldflags = ''
+        if cc.rfind('icc') >= 0:
+            cflags = cflags + ' -ccbin=%s' % cc
+            ldflags = '-ccbin=%s' % cc
+        exefile = 'sf'+prog+'.x'
+        prog = proj.Program(exefile,
+                           cfile,
+                           CC=NVCC,
+                           LINKFLAGS=ldflags,
+                           CFLAGS=cflags)
+
+pi = 3.14159
+# define paramterers
+par = {
+    # model dimensions
+    'nra':400,'ora':1    ,'dra':0.00025,'lra':'r','ura':'km',
+    'nth':400,'oth':pi/4.,'dth':0.00025,'lth':'θ','uth':'rad',
+    # time parameters
+    'kt':100, 'frq':1000,
+    'nt':1601, 'ot':0, 'dt':0.000025, 'lt':'t', 'ut':'s',
+    # model params
+    'snap':'n','jsnap':20,'height':6,
+    'nb':32,'nbell':5,'jdata':1,'dabc':'y',
+    'free':'y','ssou':'y','nc':1,'gpu':0,
+}
+
+# initialize params in the fdm model
+fdmod.param(par)
+par['nframe'] = 20
+par['iframe'] = 8
+
+# thomsen params
+par['vp'] = 2
+
+# generate velocity file
+Flow('vp',None,'''spike nsp=1 mag=%(vp)g n1=%(nra)d o1=%(ora)g d1=%(dra)g n2=%(nth)d o2=%(oth)g d2=%(dth)g |
+        put label1=%(lra)s label2=%(lth)s unit1=%(ura)s unit2=%(uth)s''' % par)
+
+# make wavelet
+fdmod.wavelet('wav',par['frq'],par)
+
+# gen source pos
+rasou = par['ora']+(par['nra']-1)*par['dra']/4.
+thsou = par['oth']+(par['nth']-1)*par['dth']/2.
+
+# gen point source
+fdmod.point('ss-2d', rasou, thsou, par)
+
+# gen receiver array
+receiver_par = par
+receiver_par['ox'] = par['oth']
+receiver_par['nx'] = par['nth']
+receiver_par['dx'] = par['dth']
+receiver_par['lx'] = par['lth']
+receiver_par['ux'] = par['uth']
+receiver_par['oz'] = par['ora']
+receiver_par['nz'] = par['nra']
+receiver_par['dz'] = par['dra']
+receiver_par['lz'] = par['lra']
+receiver_par['uz'] = par['ura']
+fdmod.horizontal('rr-2d', 1, receiver_par)
+
+# run elastic model
+Flow(['dat', 'tmp'], ['wav', 'vp', 'ss-2d', 'rr-2d'], '''
+    ./sfamodelsp.x
+    jdata=%(jdata)d dabc=%(dabc)s free=%(free)s 
+    nb=%(nb)d nbell=%(nbell)d nc=%(nc)d gpu=%(gpu)d
+    vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
+    ''' % par)
+
+End()
