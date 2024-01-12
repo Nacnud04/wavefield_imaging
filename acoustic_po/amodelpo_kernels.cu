@@ -33,28 +33,22 @@ void expand_cpu_2d(float *a, float *b, int nb, int x_a, int x_b, int z_a, int z_
 	
 }
 
-__global__ void lint3d_bell_gpu(float *d_uu, float *d_ww, float *d_Sw000, float *d_Sw001, float *d_Sw010, float *d_Sw011, float *d_Sw100, float *d_Sw101, float *d_Sw110, float *d_Sw111, float *d_bell, int *d_jz, int *d_jy, int *d_jx, int it, int nc, int ns, int c, int nbell, int nxpad, int nzpad) {
+__global__ void lint2d_bell_gpu(float *d_uu, float *d_ww, float *d_Sw00, float *d_Sw01, float *d_Sw10, float *d_Sw11, float *d_bell, int *d_jz, int *d_jx, int it, int nc, int ns, int c, int nbell, int nxpad) {
 
         int ix = threadIdx.x;
         int iy = threadIdx.y;
         int iz = threadIdx.z;
         int ia = blockIdx.x;
 
-        float wa = d_ww[it * nc * ns + c * ns + ia] * d_bell[(iy * (2*nbell+1)*(2*nbell+1)) + (iz * (2*nbell+1)) + ix];
+        float wa = d_ww[it * nc * ns + c * ns + ia] * d_bell[(iz * (2*nbell+1)) + ix];
 
-        int y_comp = (d_jy[ia] - nbell) + iy;
 	int z_comp = (d_jz[ia] - nbell) + iz;
 	int x_comp = (d_jx[ia] - nbell) + ix;
-	int xz = nxpad * nzpad;
 
-        atomicAdd(&d_uu[(y_comp)     * xz + (z_comp)     * nxpad + (x_comp)], ((wa * d_Sw000[ia])));
-        atomicAdd(&d_uu[(y_comp)     * xz + (z_comp + 1) * nxpad + (x_comp)], ((wa * d_Sw001[ia])));
-        atomicAdd(&d_uu[(y_comp)     * xz + (z_comp)     * nxpad + (x_comp)], ((wa * d_Sw010[ia])));
-        atomicAdd(&d_uu[(y_comp)     * xz + (z_comp + 1) * nxpad + (x_comp)], ((wa * d_Sw011[ia])));
-        atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp)     * nxpad + (x_comp)], ((wa * d_Sw100[ia])));
-        atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp + 1) * nxpad + (x_comp)], ((wa * d_Sw101[ia])));
-        atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp)     * nxpad + (x_comp)], ((wa * d_Sw110[ia])));
-        atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp + 1) * nxpad + (x_comp)], ((wa * d_Sw111[ia])));
+        atomicAdd(&d_uu[(z_comp)     * nxpad + (x_comp    )], ((wa * d_Sw00[ia])));
+        atomicAdd(&d_uu[(z_comp + 1) * nxpad + (x_comp    )], ((wa * d_Sw01[ia])));
+        atomicAdd(&d_uu[(z_comp)     * nxpad + (x_comp + 1)], ((wa * d_Sw10[ia])));
+        atomicAdd(&d_uu[(z_comp + 1) * nxpad + (x_comp + 1)], ((wa * d_Sw11[ia])));
 
 }
 

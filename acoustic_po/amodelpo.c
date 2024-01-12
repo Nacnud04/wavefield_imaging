@@ -297,13 +297,14 @@ int main(int argc, char*argv[]) {
 	fprintf(stderr,"total num of time steps: %d \n", nt);
 	for (it=0; it<nt; it++) {
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
-/*
-	    // INJECT STRESS SOURCE
-	    dim3 dimGrid1(ns, 1, 1);
-	    dim3 dimBlock1(2*nbell+1, 2*nbell+1, 1);
-	    lint3d_bell_gpu<<<dimGrid1, dimBlock1>>>(d_po, d_ww, d_Sw000, d_Sw001, d_Sw010, d_Sw011, d_Sw100, d_Sw101, d_Sw110, d_Sw111, d_bell, d_Sjra, d_Sjph, d_Sjth, it, ncs, 1, 0, nbell, nrapad, nthpad);
-	    sf_check_gpu_error("lint3d_bell_gpu Kernel"); 
 
+	    // INJECT STRESS SOURCE
+	    dim3 dimGrid1(ns, 1);
+	    dim3 dimBlock1(2*nbell+1, 2*nbell+1);
+	    lint2d_bell_gpu<<<dimGrid1, dimBlock1>>>(d_po, d_ww, d_Sw00, d_Sw01, d_Sw10, d_Sw11, 
+			                             d_bell, d_Sjra, d_Sjth, it, ncs, 1, 0, nbell, nrapad);
+	    sf_check_gpu_error("lint3d_bell_gpu Kernel"); 
+/*
 	    // APPLY WAVE EQUATION
 	    dim3 dimGrid2(ceil(nrapad/8.0f),ceil(nphpad/8.0f),ceil(nthpad/8.0f));
 	    dim3 dimBlock2(8,8,8);
@@ -324,7 +325,7 @@ int main(int argc, char*argv[]) {
 
     fprintf(stderr,"\n");
 
-    cudaMemcpy(h_vel, d_vel, nthpad*nrapad*sizeof(float), cudaMemcpyDefault);
+    cudaMemcpy(h_vel, d_po, nthpad*nrapad*sizeof(float), cudaMemcpyDefault);
    
     sf_setn(ara, nrapad);
     sf_setn(ath, nthpad);
