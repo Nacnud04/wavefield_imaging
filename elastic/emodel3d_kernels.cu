@@ -63,14 +63,14 @@ __global__ void lint3d_bell_gpu(float *d_uu, float *d_ww, float *d_Sw000, float 
 	int x_comp = (d_jx[ia] - nbell) + ix;
 	int xz = nxpad * nzpad;
 
-        atomicAdd(&d_uu[(y_comp)     * xz + (z_comp)     * nxpad + (x_comp)], ((wa * d_Sw000[ia])));
-        atomicAdd(&d_uu[(y_comp)     * xz + (z_comp + 1) * nxpad + (x_comp)], ((wa * d_Sw001[ia])));
-        atomicAdd(&d_uu[(y_comp)     * xz + (z_comp)     * nxpad + (x_comp)], ((wa * d_Sw010[ia])));
-        atomicAdd(&d_uu[(y_comp)     * xz + (z_comp + 1) * nxpad + (x_comp)], ((wa * d_Sw011[ia])));
-        atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp)     * nxpad + (x_comp)], ((wa * d_Sw100[ia])));
-        atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp + 1) * nxpad + (x_comp)], ((wa * d_Sw101[ia])));
-        atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp)     * nxpad + (x_comp)], ((wa * d_Sw110[ia])));
-        atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp + 1) * nxpad + (x_comp)], ((wa * d_Sw111[ia])));
+	atomicAdd(&d_uu[(y_comp)     * xz + (z_comp)     * nxpad + (x_comp    )], ((wa * d_Sw000[ia])));
+        atomicAdd(&d_uu[(y_comp)     * xz + (z_comp + 1) * nxpad + (x_comp    )], ((wa * d_Sw001[ia])));
+        atomicAdd(&d_uu[(y_comp)     * xz + (z_comp)     * nxpad + (x_comp + 1)], ((wa * d_Sw010[ia])));
+        atomicAdd(&d_uu[(y_comp)     * xz + (z_comp + 1) * nxpad + (x_comp + 1)], ((wa * d_Sw011[ia])));
+        atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp)     * nxpad + (x_comp    )], ((wa * d_Sw100[ia])));
+        atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp + 1) * nxpad + (x_comp    )], ((wa * d_Sw101[ia])));
+        atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp)     * nxpad + (x_comp + 1)], ((wa * d_Sw110[ia])));
+        atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp + 1) * nxpad + (x_comp + 1)], ((wa * d_Sw111[ia])));
 
 }
 
