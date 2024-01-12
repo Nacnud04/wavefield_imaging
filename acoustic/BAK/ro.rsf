@@ -1,0 +1,32 @@
+4.2-git	sfspike	byrne/CUDA/acoustic:	byrne@gpu3	Tue Dec 19 16:47:12 2023
+
+	d2=0.00025
+	o1=0
+	n2=400
+	d3=0.00025
+	o2=-0.05
+	label1="Time"
+	n3=400
+	data_format="native_float"
+	o3=-0.05
+	label2="Distance"
+	label3="Distance"
+	esize=4
+	in="stdout"
+	unit1="s"
+	unit2="km"
+	unit3="km"
+	d1=0.00025
+	n1=400
+	in="stdin"
+
+4.2-git	sfput	byrne/CUDA/acoustic:	byrne@gpu3	Tue Dec 19 16:47:12 2023
+
+	unit2=km
+	label3=y
+	unit3=km
+	data_format="native_float"
+	in="/scratch/byrne/byrne/CUDA/acoustic/ro.rsf@"
+	label1=z
+	unit1=km
+	label2=x

@@ -1,0 +1,112 @@
+from rsf.proj import * # set up generic proj files
+import sys, os # import madagascar path
+
+# compile project
+proj = Project()
+
+# import modules
+RSFPATH = proj.get('RSFSRC')
+print(f"RSFPATH: {RSFPATH}")
+sys.path.append(os.getenv('RSFSRC')+'/book/Recipes')
+
+# import modules
+import math, fdmod, encode, wemig, stiffness
+
+## COMPILE AWEFD2DGPU ##
+cuda_progs = 'emodel3d'
+exefile = 'sfemodel3d.x'
+
+CTP = proj.get('CUDA_TOOLKIT_PATH')
+NVCC = proj.get('NVCC')
+print(f'CTP:{CTP}\nNVCC:{NVCC}')
+
+CTP = proj.get('CUDA_TOOLKIT_PATH')
+NVCC = proj.get('NVCC')
+print(f'CTP:{CTP}\nNVCC:{NVCC}')
+
+proj.Append(LIBS=[proj.get('DYNLIB','')+'rsf'],
+           CPPPATH=['../../include'],
+           LIBPATH=['../../lib'])
+
+if CTP:
+    proj.Append(LIBS=['cudart','cufft','cusparse'],
+               LIBPATH=filter(os.path.isdir,[os.path.join(CTP,'lib64'),
+                                             os.path.join(CTP,'lib')]))
+
+cuda_mains = Split(cuda_progs)
+for prog in cuda_mains:
+    if CTP and NVCC:
+        cfile = proj.Command(prog+'.c','M'+prog+'.cu','cp $SOURCE $TARGET')
+        cc = proj.get('CC')
+        cflags = '-prec-div=true -arch=sm_60 --x=cu'
+        ldflags = ''
+        if cc.rfind('icc') >= 0:
+            cflags = cflags + ' -ccbin=%s' % cc
+            ldflags = '-ccbin=%s' % cc
+        exefile = 'sf'+prog+'.x'
+        prog = proj.Program(exefile,
+                           cfile,
+                           CC=NVCC,
+                           LINKFLAGS=ldflags,
+                           CFLAGS=cflags)
+
+## ACTUAL SCONSTRUCT
+par = {
+    # model dimensions
+    'nx':400, 'ox':-0.05, 'dx':0.00025,  'lx':'x', 'ux':'km',
+    'ny':400, 'oy':-0.05, 'dy':0.00025,  'ly':'y', 'uy':'km',
+    'nz':400, 'oz':0, 'dz':0.00025,  'lz':'z', 'uz':'km',
+    # time params
+    'kt':100, 'frq':400,
+    'nt':1601,'ot':0, 'dt':0.000025,  'lt':'t', 'ut':'s',
+    # Shot locations
+    'nsx':1,  'dsx':0.0050, 'osx':0,
+    'nsy':1,  'dsy':0.0050, 'osy':0,
+    # model params
+    'snap':'n','jsnap':20,'height':6,
+    'nb':32,'nbell':5,'jdata':1,'dabc':'y',
+    'free':'n','ssou':'y', 'nc':1, 'gpu':0,
+}
+
+# initalize params in fdm module
+fdmod.param(par)
+par['nframe'] = 20
+par['iframe'] = 8
+
+# thomsen params
+par['vp'] = 3.5#2.1
+par['ro'] = 2000
+
+# generate velocity file
+Flow('vp',None,'''spike nsp=1 mag=%(vp)g n1=%(nz)d o1=%(oz)g d1=%(dz)g n2=%(nx)d o2=%(ox)g d2=%(dx)g n3=%(ny)d o3=%(oy)g d3=%(dy)g | 
+                  put label1=%(lz)s label2=%(lx)s label3=%(ly)s unit1=%(uz)s unit2=%(ux)s unit3=%(uy)s''' % par)
+# generate ro file
+Flow('ro',None,'''spike nsp=1 mag=%(ro)g n1=%(nz)d o1=%(oz)g d1=%(dz)g n2=%(nx)d o2=%(ox)g d2=%(dx)g n3=%(ny)d o3=%(oy)g d3=%(dy)g |
+                  put label1=%(lz)s label2=%(lx)s label3=%(ly)s unit1=%(uz)s unit2=%(ux)s unit3=%(uy)s''' % par)
+
+# create a wavelet
+fdmod.wavelet('wav',par['frq'],par)
+
+# generate source position
+zsou=par['oz']+(par['nz']-1)*par['dz']/4.
+xsou=par['ox']+(par['nx']-1)*par['dx']/2.
+ysou=par['oy']+(par['ny']-1)*par['dy']/2.
+
+# gen point source
+fdmod.point3d('ss-3d', xsou, ysou, zsou, par)
+
+# gen receiver array
+fdmod.horizontal3d('rr-3d', 0, par)
+
+# run elastic model
+
+Flow(['dat', 'tmp'], ['wav', 'vp', 'ro', 'ss-3d', 'rr-3d'], '''
+    ./sfemodel3d.x
+    jdata=%(jdata)d dabc=%(dabc)s free=%(free)s snap=%(snap)s jsnap=%(jsnap)d ssou=%(ssou)s
+    nb=%(nb)d nbell=%(nbell)d nc=%(nc)d gpu=%(gpu)d
+    vel=${SOURCES[1]} den=${SOURCES[2]} sou=${SOURCES[3]} rec=${SOURCES[4]}
+    ''' % par)
+
+Result('dat', 'window n1=400 f1=80000 | transp | grey')
+
+End()

@@ -1,0 +1,31 @@
+4.2-git	sfmath	byrne/CUDA/acoustic:	byrne@gpu3	Thu Dec 28 00:17:57 2023
+
+	x2=1
+	d2=0.00025
+	n2=400
+	o1=-0.05
+	o2=-0.05
+	data_format="native_float"
+	esize=4
+	in="/scratch/byrne/rr-3d_.rsf@"
+	x1=0
+	d1=0.00025
+	n1=400
+4.2-git	sfmath	byrne/CUDA/acoustic:	byrne@gpu3	Thu Dec 28 00:17:57 2023
+
+	x2=2
+	input=0
+	data_format="native_float"
+	esize=4
+	in="stdout"
+	x1=1
+	in="stdin"
+
+4.2-git	sfput	byrne/CUDA/acoustic:	byrne@gpu3	Thu Dec 28 00:17:57 2023
+
+	in="/scratch/byrne/rr-3d_x.rsf@"
+	n2=400
+	n3=1
+	data_format="native_float"
+	datapath=/scratch/byrne/
+	n1=400
