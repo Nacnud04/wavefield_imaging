@@ -103,7 +103,7 @@ fdmod.horizontal('rr-2d', 1, receiver_par)
 
 # run elastic model
 Flow(['dat', 'tmp'], ['wav', 'vp', 'ss-2d', 'rr-2d'], '''
-    ./sfamodelsp.x
+    ./sfamodelpo.x
     jdata=%(jdata)d dabc=%(dabc)s free=%(free)s 
     nb=%(nb)d nbell=%(nbell)d nc=%(nc)d gpu=%(gpu)d
     vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
