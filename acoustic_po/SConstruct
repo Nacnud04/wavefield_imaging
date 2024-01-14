@@ -57,8 +57,8 @@ par = {
     'nra':400,'ora':10    ,'dra':0.00025,'lra':'r','ura':'km',
     'nth':400,'oth':pi/4.,'dth':0.000025,'lth':'θ','uth':'rad',
     # time parameters
-    'kt':100, 'frq':1000,
-    'nt':1601, 'ot':0, 'dt':0.000025, 'lt':'t', 'ut':'s',
+    'kt':100, 'frq':800,
+    'nt':1600, 'ot':0, 'dt':0.000025, 'lt':'t', 'ut':'s',
     # model params
     'snap':'n','jsnap':20,'height':6,
     'nb':32,'nbell':5,'jdata':1,'dabc':'y',
