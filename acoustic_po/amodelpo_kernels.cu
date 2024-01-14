@@ -36,8 +36,7 @@ void expand_cpu_2d(float *a, float *b, int nb, int x_a, int x_b, int z_a, int z_
 __global__ void lint2d_bell_gpu(float *d_uu, float *d_ww, float *d_Sw00, float *d_Sw01, float *d_Sw10, float *d_Sw11, float *d_bell, int *d_jz, int *d_jx, int it, int nc, int ns, int c, int nbell, int nxpad) {
 
         int ix = threadIdx.x;
-        int iy = threadIdx.y;
-        int iz = threadIdx.z;
+        int iz = threadIdx.y;
         int ia = blockIdx.x;
 
         float wa = d_ww[it * nc * ns + c * ns + ia] * d_bell[(iz * (2*nbell+1)) + ix];
@@ -57,92 +56,46 @@ __global__ void lint2d_bell_gpu(float *d_uu, float *d_ww, float *d_Sw00, float *
 #define NOP 4 // half of the order in space
 
 __global__ void solve(float *d_fpo, float *d_po, float *d_ppo, float *d_vel,
-		      float dra, float dph, float dth, float dt,
-		      int nrapad, int nthpad, int nphpad) {
+		      float dra, float dth, float dt,
+		      int nrapad, int nthpad) {
 
 	int ira = threadIdx.x + blockIdx.x * blockDim.x;
-	int iph = threadIdx.y + blockIdx.y * blockDim.y;
-	int ith = threadIdx.z + blockIdx.z * blockDim.z;
+	int ith = threadIdx.y + blockIdx.y * blockDim.y;
 
-	if (ira < nrapad && ith < nthpad && iph < nphpad){
+	if (ira < nrapad && ith < nthpad){
 		
-		int globalAddr = iph * nthpad * nrapad + ith * nrapad + ira;			  float laplace;
+		int globalAddr = ith * nrapad + ira;			  
+		float laplace;
+		float compra, compth;
 
 		// extract true location from deltas and indicies
-		float ra; float ph; float th;
+		float ra; float th;
 		ra = dra * ira;
-		ph = dph * iph;
 		th = dth * ith;
+		//dra = 1/dra;
+		//dth = 1/dth;
 		
 		// extract true velocity
 		float v;
 		v  = d_vel[globalAddr];
 
 		// perform only in boundaries:
-		if (ira >= NOP && ira < nrapad-NOP && iph >= NOP && iph < nphpad-NOP && ith >= NOP && ith < nthpad - NOP) {
+		if (ira >= NOP && ira < nrapad-NOP && ith >= NOP && ith < nthpad - NOP) {
 
+			// CALC LAPLACE VIA STENCIL
 			
-			// compute d/dra*(ra^2*dp/dra)
-			// to do this we need to compute dp/dra one step forward
-			// and one back to produce d/dra
+			// START BY LOOKING AT VALS ALONG -R then R then +R
+			compra = ((1/(dra*dra))+(1/(2*ra*dra))) * d_po[INDEX2D(ira-1,ith,nrapad)] + 
+				 (-2/(dra*dra))                 * d_po[globalAddr] +
+				 ((1/(dra*dra))-(1/(2*ra*dra))) * d_po[INDEX2D(ira+1,ith,nrapad)];
 			
-			float pra_p; float pra_n; // + and - derivative along ra
-			pra_p =  d_po[INDEX3D(ira+1+1, iph, ith, nrapad, nthpad)]\
-			        -d_po[INDEX3D(ira-1+1, iph, ith, nrapad, nthpad)];
-			pra_p = pra_p / (2 * dra);
-			pra_n =  d_po[INDEX3D(ira+1-1, iph, ith, nrapad, nthpad)]\
-				-d_po[INDEX3D(ira-1-1, iph, ith, nrapad, nthpad)];
-			pra_n = pra_n / (2 * dra);
-			
-			// multiply by r^2
-			pra_p = pra_p * ra * ra;
-			pra_n = pra_n * ra * ra;
+			// NOW COMPUTE COMPONENTS DEPENDENT ON THETA
+			compth = ((1/(ra*ra*dth*dth))) * d_po[INDEX2D(ira,ith-1,nrapad)] + 
+				 (-2/(ra*ra*dth*dth))  * d_po[globalAddr] + 
+				 ((1/(ra*ra*dth*dth))) * d_po[INDEX2D(ira,ith+1,nrapad)];
 
-			// compute FD using pra_p and pra_n
-			float ppra;
-			ppra = pra_p - pra_n;
-			ppra = ppra / (2 * dra);
-
-			
-			// compute d/dth*(Sin(th)*dp/dth)
-			// to do this we need to compute dp/dth one step forward
-			// and one back to prudce d/dth
-			
-			float pth_p; float pth_n; // + and - derivative along th
-			pth_p =  d_po[INDEX3D(ira, iph, ith+1+1, nrapad, nthpad)]\
-				-d_po[INDEX3D(ira, iph, ith-1+1, nrapad, nthpad)];
-			pth_p = pth_p / (2 * dth);
-			pth_n =  d_po[INDEX3D(ira, iph, ith+1-1, nrapad, nthpad)]\
-				-d_po[INDEX3D(ira, iph, ith-1-1, nrapad, nthpad)];
-			pth_n = pth_n / (2 * dth);
-
-			// multiply by sin(theta)
-			pth_p = sin(th) * pth_p;
-			pth_n = sin(th) * pth_n;
-
-			// compute FD using pth_p and pth_n
-			float ppth;
-			ppth = pth_p - pth_n;
-			ppth = ppth / (2 * dth);
-
-
-			// compute pphph (d^2p/dph^2)
-			float pphph;
-			pphph =    d_po[INDEX3D(ira, iph, ith+1,nrapad,nthpad)] \
-                                -2*d_po[INDEX3D(ira, iph, ith  ,nrapad,nthpad)] \
-                                  +d_po[INDEX3D(ira, iph, ith-1,nrapad,nthpad)];
-                        pphph = pphph / (dph * dph);
-
-
-			// multiply r^-2 with ppra
-			ppra = ppra / (ra * ra);
-			// multiply 1/(r^2*Sin(th))
-			ppth = ppth / (ra * ra * sin(th));
-			// multiply 1/(r^2*Sin(th))
-			pphph = pphph / (ra * ra * sin(th) * sin(th));
-
-			// combine into laplacian
-			laplace = ppra + ppth + pphph;
+			// SUM TO GET LAPLACIAN
+			laplace = compra + compth;
 
 		} else {
 			laplace = 0.;
@@ -158,15 +111,14 @@ __global__ void solve(float *d_fpo, float *d_po, float *d_ppo, float *d_vel,
 
 
 __global__ void shift(float *d_fpo, float *d_po, float *d_ppo,
-		      int nrapad, int nphpad, int nthpad) {
+		      int nrapad, int nthpad) {
 	
 	int ira = threadIdx.x + blockIdx.x * blockDim.x;
-        int iph = threadIdx.y + blockIdx.y * blockDim.y;
-        int ith = threadIdx.z + blockIdx.z * blockDim.z;
+        int ith = threadIdx.y + blockIdx.y * blockDim.y;
 
-	if (ira < nrapad && iph < nphpad && ith < nthpad){
+	if (ira < nrapad && ith < nthpad){
 
-		int globalAddr = iph * nthpad * nrapad + ith * nrapad + ira;
+		int globalAddr = ith * nrapad + ira;
 		
 		// replace ppo with po and fpo with po
 		d_ppo[globalAddr] = d_po[globalAddr];

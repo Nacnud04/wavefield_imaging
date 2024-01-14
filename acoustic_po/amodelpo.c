@@ -295,7 +295,7 @@ int main(int argc, char*argv[]) {
 
 	// TIME LOOP
 	fprintf(stderr,"total num of time steps: %d \n", nt);
-	for (it=0; it<nt; it++) {
+	for (it=0; it<100; it++) {
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
 	    // INJECT STRESS SOURCE
@@ -304,21 +304,21 @@ int main(int argc, char*argv[]) {
 	    lint2d_bell_gpu<<<dimGrid1, dimBlock1>>>(d_po, d_ww, d_Sw00, d_Sw01, d_Sw10, d_Sw11, 
 			                             d_bell, d_Sjra, d_Sjth, it, ncs, 1, 0, nbell, nrapad);
 	    sf_check_gpu_error("lint3d_bell_gpu Kernel"); 
-/*
+
 	    // APPLY WAVE EQUATION
-	    dim3 dimGrid2(ceil(nrapad/8.0f),ceil(nphpad/8.0f),ceil(nthpad/8.0f));
-	    dim3 dimBlock2(8,8,8);
+	    dim3 dimGrid2(ceil(nrapad/8.0f),ceil(nthpad/8.0f));
+	    dim3 dimBlock2(8,8);
 	    solve<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
 			    		  d_vel,
-					  dra, dph, dth, dt,
-					  nrapad, nphpad, nthpad);
+					  dra, dth, dt,
+					  nrapad, nthpad);
 	    sf_check_gpu_error("solve Kernel");
 
 	    // SHIFT PRESSURE FIELDS IN TIME
 	    shift<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
-					   nrapad, nphpad, nthpad);
+					   nrapad, nthpad);
 	    sf_check_gpu_error("shift Kernel");
-*/
+
 	}
 
     }
