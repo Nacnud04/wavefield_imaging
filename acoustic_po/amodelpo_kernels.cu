@@ -156,15 +156,16 @@ __global__ void lint3d_extract_gpu(float *d_dd_pp,
 }
 
 
-__global__ void freeSurf(float *d_po, int nxpad, int nypad, int nzpad, int nb) {
+__global__ void freeSurf(float *d_po, int nrapad, int nthpad, int nb) {
 
-        int x = threadIdx.x + blockIdx.x * blockDim.x;
-        int y = threadIdx.y + blockIdx.y * blockDim.y;
-	int z = threadIdx.z + blockIdx.z * blockDim.z;
+        int ra = threadIdx.x + blockIdx.x * blockDim.x;
+        int th = threadIdx.y + blockIdx.y * blockDim.y;
 
-	if (x < nxpad && y < nypad && z < nb) {
+	// apply freesurface on the extent of the planet
+	// AKA where radius is greatest
+	if (th < nthpad && ra > nb) {
 		
-		int addr = y * nxpad * nzpad + z * nxpad + x;
+		int addr = th * nrapad + ra;
 
 		d_po[addr] = 0;
 
