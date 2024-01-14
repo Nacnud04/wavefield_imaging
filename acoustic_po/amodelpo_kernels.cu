@@ -56,7 +56,7 @@ __global__ void lint2d_bell_gpu(float *d_uu, float *d_ww, float *d_Sw00, float *
 #define NOP 4 // half of the order in space
 
 __global__ void solve(float *d_fpo, float *d_po, float *d_ppo, float *d_vel,
-		      float dra, float dth, float dt,
+		      float dra, float dth, float ora, float oth, float dt,
 		      int nrapad, int nthpad) {
 
 	int ira = threadIdx.x + blockIdx.x * blockDim.x;
@@ -70,10 +70,8 @@ __global__ void solve(float *d_fpo, float *d_po, float *d_ppo, float *d_vel,
 
 		// extract true location from deltas and indicies
 		float ra; float th;
-		ra = dra * ira;
-		th = dth * ith;
-		//dra = 1/dra;
-		//dth = 1/dth;
+		ra = dra * ira + ora;
+		th = dth * ith + oth;
 		
 		// extract true velocity
 		float v;

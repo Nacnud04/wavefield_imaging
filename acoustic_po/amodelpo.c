@@ -41,6 +41,7 @@ int main(int argc, char*argv[]) {
     int nt, nra, nth, ns, nr, ncs, nb;
     int it, ira, ith;
     float dt, dra, dth;
+    float ot, ora, oth;
 
     // FDM structure
     fdm2d fdm=NULL;
@@ -93,8 +94,11 @@ int main(int argc, char*argv[]) {
     ns  = sf_n(as);
     nr  = sf_n(ar_3) * sf_n(ar);
 
+    ora = sf_o(ara); oth = sf_o(ath); ot = sf_o(at);
+
     sf_warning("nra:%d|nth:%d|nt:%d|ns:%d|nr:%d",nra,nth,nt,ns,nr);
     sf_warning("dra:%f|dth:%f|dt:%f", dra, dth, dt);
+    sf_warning("ora:%f|oth:%f|ot:%f", ora, oth, ot);
 
     
     // define bell size
@@ -124,7 +128,9 @@ int main(int argc, char*argv[]) {
     // FDM is based on Z, X, Not polar. So we need to convert
     // to spherical. Z=Theta, X=Radius
     fdm = fdutil_init(false, fsrf, ath, ara, nb, 1);
-    sf_warning("oth %f, ora %f", fdm->ozpad, fdm->oxpad);
+    // origin is very slighly different under FDM due to gridsize.
+    sf_warning("Adjusted Origins: oth %f, ora %f", fdm->ozpad, fdm->oxpad);
+    oth = fdm->ozpad; ora = fdm->oxpad;
 
     // create gaussian bell
     if (nbell * 2 + 1 > 32) {sf_error("nbell must be <= 15\n");}
@@ -295,7 +301,7 @@ int main(int argc, char*argv[]) {
 
 	// TIME LOOP
 	fprintf(stderr,"total num of time steps: %d \n", nt);
-	for (it=0; it<100; it++) {
+	for (it=0; it<nt; it++) {
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
 	    // INJECT STRESS SOURCE
@@ -310,7 +316,7 @@ int main(int argc, char*argv[]) {
 	    dim3 dimBlock2(8,8);
 	    solve<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
 			    		  d_vel,
-					  dra, dth, dt,
+					  dra, dth, ora, oth, dt,
 					  nrapad, nthpad);
 	    sf_check_gpu_error("solve Kernel");
 
