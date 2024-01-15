@@ -329,6 +329,10 @@ int main(int argc, char*argv[]) {
 	    spongeKernel<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nthpad, nb);
 	    sf_check_gpu_error("sponge Kernel");
 
+	    // FREE SURFACE
+	    freeSurf<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nthpad, nb);
+	    sf_check_gpu_error("freeSurf Kernel");
+
 	}
 
     }

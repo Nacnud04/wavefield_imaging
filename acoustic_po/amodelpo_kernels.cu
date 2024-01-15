@@ -158,14 +158,17 @@ __global__ void lint3d_extract_gpu(float *d_dd_pp,
 
 __global__ void freeSurf(float *d_po, int nrapad, int nthpad, int nb) {
 
-        int ra = threadIdx.x + blockIdx.x * blockDim.x;
-        int th = threadIdx.y + blockIdx.y * blockDim.y;
+        int ira = threadIdx.x + blockIdx.x * blockDim.x;
+        int ith = threadIdx.y + blockIdx.y * blockDim.y;
 
 	// apply freesurface on the extent of the planet
 	// AKA where radius is greatest
-	if (th < nthpad && ra > nb) {
-		
-		int addr = th * nrapad + ra;
+	if (ith < nthpad && ira > nrapad - nb) {
+	
+		// this indexing is slightly different.
+		// for some reason it places the free surface
+		// in the correct location	
+		int addr = ira * nthpad + ith;
 
 		d_po[addr] = 0;
 
@@ -184,7 +187,7 @@ __global__ void spongeKernel(float *d_po, int nrapad, int nthpad, int nb){
 	// apply sponge
 	if (ra < nrapad && th < nthpad) {
         
-		int addr = th * nrapad + ra;
+		int addr = ra * nthpad + th;
 
 		// apply to low values
 		if (ra < nb || th < nb){
