@@ -178,7 +178,7 @@ __global__ void spongeKernel(float *d_po, int nrapad, int nthpad, int nb){
 	int ra = threadIdx.x + blockIdx.x * blockDim.x;
 	int th = threadIdx.y + blockIdx.y * blockDim.y;
 
-	float alpha = 0.95;
+	float alpha = 0.90;
 	int i = 1;
 
 	// apply sponge

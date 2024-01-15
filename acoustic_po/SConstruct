@@ -81,7 +81,7 @@ Flow('vp',None,'''spike nsp=1 mag=%(vp)g n1=%(nra)d o1=%(ora)g d1=%(dra)g n2=%(n
 fdmod.wavelet('wav',par['frq'],par)
 
 # gen source pos
-rasou = par['ora']+(par['nra']-1)*par['dra']/4.
+rasou = par['ora']+3*(par['nra']-1)*par['dra']/4.
 thsou = par['oth']+(par['nth']-1)*par['dth']/2.
 
 # gen point source
