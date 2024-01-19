@@ -113,4 +113,6 @@ Flow(['dat', 'tmp'], ['wav', 'vp', 'ss-2d', 'rr-2d'], '''
     vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
     ''' % par)
 
+Result('dat', 'window | transp | grey')
+
 End()
