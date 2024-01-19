@@ -33,7 +33,7 @@ void expand_cpu_2d(float *a, float *b, int nb, int x_a, int x_b, int z_a, int z_
 	
 }
 
-__global__ void lint2d_bell_gpu(float *d_uu, float *d_ww, float *d_Sw00, float *d_Sw01, float *d_Sw10, float *d_Sw11, float *d_bell, int *d_jz, int *d_jx, int it, int nc, int ns, int c, int nbell, int nxpad) {
+__global__ void lint2d_bell_gpu(float *d_uu, float *d_ww, float *d_Sw00, float *d_Sw01, float *d_Sw10, float *d_Sw11, float *d_bell, int *d_jx, int *d_jz, int it, int nc, int ns, int c, int nbell, int nxpad) {
 
         int ix = threadIdx.x;
         int iz = threadIdx.y;
@@ -160,20 +160,9 @@ __global__ void freeSurf(float *d_po, int nrapad, int nthpad, int nb) {
 
         int ira = threadIdx.x + blockIdx.x * blockDim.x;
         int ith = threadIdx.y + blockIdx.y * blockDim.y;
-/*
+
 	// apply freesurface on the extent of the planet
 	// AKA where radius is greatest
-	if (ith < nthpad && ira > nrapad - nb) {
-	
-		// this indexing is slightly different.
-		// for some reason it places the free surface
-		// in the correct location	
-		int addr = ira * nthpad + ith;
-
-		d_po[addr] = 0;
-
-	}
-*/
 	if (ith < nthpad && ira > nrapad - nb) {
 		int addr = ith * nrapad + ira;
 		d_po[addr] = 0;
