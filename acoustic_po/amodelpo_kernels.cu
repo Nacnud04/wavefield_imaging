@@ -160,7 +160,7 @@ __global__ void freeSurf(float *d_po, int nrapad, int nthpad, int nb) {
 
         int ira = threadIdx.x + blockIdx.x * blockDim.x;
         int ith = threadIdx.y + blockIdx.y * blockDim.y;
-
+/*
 	// apply freesurface on the extent of the planet
 	// AKA where radius is greatest
 	if (ith < nthpad && ira > nrapad - nb) {
@@ -172,6 +172,11 @@ __global__ void freeSurf(float *d_po, int nrapad, int nthpad, int nb) {
 
 		d_po[addr] = 0;
 
+	}
+*/
+	if (ith < nthpad && ira > nrapad - nb) {
+		int addr = ith * nrapad + ira;
+		d_po[addr] = 0;
 	}
 }
 
@@ -187,7 +192,7 @@ __global__ void spongeKernel(float *d_po, int nrapad, int nthpad, int nb){
 	// apply sponge
 	if (ra < nrapad && th < nthpad) {
         
-		int addr = ra * nthpad + th;
+		int addr = th * nrapad + ra;
 
 		// apply to low values
 		if (ra < nb || th < nb){
