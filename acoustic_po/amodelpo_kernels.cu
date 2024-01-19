@@ -225,3 +225,34 @@ __global__ void spongeKernel(float *d_po, int nrapad, int nthpad, int nb){
 	}
 
 }
+
+
+__global__ void extract(float *d_dd_pp, 
+			int it, int nr,
+			int nrapad, int nthpad,
+			float *d_po, int *d_Rjra, int *d_Rjth,
+			float *d_Rw00, float *d_Rw01, float *d_Rw10, float *d_Rw11) {
+
+	// receiver number
+	int rr = threadIdx.x + blockIdx.x * blockDim.x;
+	// time offset
+	// avoids rewriting over previously received data
+	int offset = it * nr;
+
+	// only perform if the receiver number represents an actual existing receiver
+	if (rr < nr){
+
+		int th_comp   = (d_Rjth[rr]) * nrapad;
+		int th_comp_1 = (d_Rjth[rr]+1) * nrapad;
+
+		// set recived pressure vals
+		
+		d_dd_pp[offset + rr] = d_po[th_comp   + (d_Rjra[rr])]   * d_Rw00[rr] +
+                                       d_po[th_comp_1 + (d_Rjra[rr])]   * d_Rw01[rr] +
+                                       d_po[th_comp   + (d_Rjra[rr]+1)] * d_Rw10[rr] +
+                                       d_po[th_comp_1 + (d_Rjra[rr]+1)] * d_Rw11[rr];
+
+
+	}
+
+}

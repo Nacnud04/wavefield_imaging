@@ -333,12 +333,35 @@ int main(int argc, char*argv[]) {
 	    freeSurf<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nthpad, nb);
 	    sf_check_gpu_error("freeSurf Kernel");
 
+	    // EXTRACT TO RECEIVERS
+	    dim3 dimGrid3(MIN(nr, ceil(nr/1024.0f)), 1);
+	    dim3 dimBlock3(MIN(nr, 1024), 1);
+
+	    extract<<<dimGrid3, dimBlock3>>>(d_dd_pp, it, nr,
+			    		     nrapad, nthpad, 
+					     d_po, d_Rjra, d_Rjth,
+					     d_Rw00, d_Rw01, d_Rw10, d_Rw11);
+	    sf_check_gpu_error("extract Kernel");
+
 	}
 
     }
 
     fprintf(stderr,"\n");
 
+    
+    cudaMemcpy(h_dd_pp, d_dd_pp, nsmp*nr*sizeof(float), cudaMemcpyDefault);
+
+    sf_setn(ar, nr);
+    sf_setn(at, nsmp);
+    sf_setd(at, dt*jdata);
+
+    sf_oaxa(Fdat, at, 2);
+    sf_oaxa(Fdat, ar, 1);
+
+    sf_floatwrite(h_dd_pp, nsmp*nr*sizeof(float), Fdat);    
+    
+/*
     cudaMemcpy(h_vel, d_po, nthpad*nrapad*sizeof(float), cudaMemcpyDefault);
    
     sf_setn(ara, nrapad);
@@ -347,7 +370,7 @@ int main(int argc, char*argv[]) {
     sf_oaxa(Fdat, ath, 1);
 
     sf_floatwrite(h_vel, nthpad*nrapad*sizeof(float), Fdat);
-
+*/
     // FREE ALLOCATED MEMORY
     cudaFree(d_ww);
 

@@ -1,4 +1,5 @@
 from rsf.proj import *
+import polar_util as putil
 import sys, os
 
 # compile project
@@ -61,7 +62,7 @@ par = {
     'nt':1600, 'ot':0, 'dt':0.000025, 'lt':'t', 'ut':'s',
     # model params
     'snap':'n','jsnap':20,'height':6,
-    'nb':32,'nbell':5,'jdata':1,'dabc':'y',
+    'nb':64,'nbell':5,'jdata':1,'dabc':'y',
     'free':'y','ssou':'y','nc':1,'gpu':0,
 }
 
@@ -99,7 +100,10 @@ receiver_par['nz'] = par['nra']
 receiver_par['dz'] = par['dra']
 receiver_par['lz'] = par['lra']
 receiver_par['uz'] = par['ura']
-fdmod.horizontal('rr-2d', 1, receiver_par)
+
+rec_z = par['ora'] + par['nra'] * par['dra']
+
+putil.horizontal('rr-2d', rec_z, receiver_par)
 
 # run elastic model
 Flow(['dat', 'tmp'], ['wav', 'vp', 'ss-2d', 'rr-2d'], '''
