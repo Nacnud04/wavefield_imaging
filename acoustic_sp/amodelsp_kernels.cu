@@ -201,15 +201,15 @@ __global__ void lint3d_extract_gpu(float *d_dd_pp,
 }
 
 
-__global__ void freeSurf(float *d_po, int nxpad, int nypad, int nzpad, int nb) {
+__global__ void freeSurf(float *d_po, int nrapad, int nphpad, int nthpad, int nb) {
 
-        int x = threadIdx.x + blockIdx.x * blockDim.x;
-        int y = threadIdx.y + blockIdx.y * blockDim.y;
-        int z = threadIdx.z + blockIdx.z * blockDim.z;
+        int ira = threadIdx.x + blockIdx.x * blockDim.x;
+        int iph = threadIdx.y + blockIdx.y * blockDim.y;
+        int ith = threadIdx.z + blockIdx.z * blockDim.z;
 
-	if (x < nxpad && y < nypad && z < nb) {
+	if (iph < nphpad && ith < nthpad && ira > nrapad - nb) {
 		
-		int addr = y * nxpad * nzpad + z * nxpad + x;
+		int addr = iph * nthpad * nrapad + ith * nrapad + ira;
 
 		d_po[addr] = 0;
 
@@ -217,48 +217,53 @@ __global__ void freeSurf(float *d_po, int nxpad, int nypad, int nzpad, int nb) {
 }
 
 
-__global__ void spongeKernel(float *d_po, int nxpad, int nypad, int nzpad, int nb){
+__global__ void spongeKernel(float *d_po, int nrapad, int nphpad, int nthpad, int nb){
 
-	int x = threadIdx.x + blockIdx.x * blockDim.x;
-	int y = threadIdx.y + blockIdx.y * blockDim.y;
-	int z = threadIdx.z + blockIdx.z * blockDim.z;
+	int ira = threadIdx.x + blockIdx.x * blockDim.x;
+	int iph = threadIdx.y + blockIdx.y * blockDim.y;
+	int ith = threadIdx.z + blockIdx.z * blockDim.z;
 
 	float alpha = 0.90;
 
 	// apply sponge
-	if (x < nxpad && y < nypad && z < nzpad) {
-        	
+	if (ira < nrapad && iph < nphpad && ith < nthpad) {
+        
+		int addr = iph * nthpad * nrapad + ith * nrapad + ira;
+		int i;
+
 		// apply to low values
-		if (x < nb || y < nb){
+		if (ira < nb || iph < nb || ith < nb){
 
-			int addr = y * nxpad * nzpad + z * nxpad + x;
-
-			int i = nb - x;
+			if      (ira < nb) {i = nb - ira;}
+			else if (iph < nb) {i = nb - iph;}
+			else if (ith < nb) {i = nb - ith;}
+			
 			// dampining funct 1
-			double damp = exp(-1.0*fabs(((i-1.0)*log(alpha))/nb)); 
+			//double damp = exp(-1.0*fabs(((i-1.0)*log(alpha))/nb)); 
 			
 			// dampining funct 2
-			//double damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
+			double damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
 
 			d_po[addr] *= damp;
 		
-		}
+		} 
 		// apply to high values
-		if (x > nxpad - nb || y > nypad - nb || z > nzpad - nb) {
+		// do not apply to high values of ra where free surface lies
+		// this wouldn't make a difference if it was applied, just
+		// makes the code shorter
+		if (iph > nphpad - nb || ith > nthpad - nb) {
 			
-			int addr = y * nxpad * nzpad + z * nxpad + x;
-			
-			int i = x - (nxpad - nb);
+			if      (iph > nphpad - nb) {i = iph - (nphpad - nb);}
+                        else                        {i = ith - (nthpad - nb);}
+
 			// dampining funct 1
-			double damp = exp(-1.0*fabs(((i-1.0)*log(alpha))/nb));
+			//double damp = exp(-1.0*fabs(((i-1.0)*log(alpha))/nb));
 
                         // dampining funct 2
-                        //double damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
+                        double damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
 
 			d_po[addr] *= damp;
 
 		}
-
 	}
-
 }
