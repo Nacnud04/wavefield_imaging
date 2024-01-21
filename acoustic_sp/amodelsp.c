@@ -126,6 +126,8 @@ int main(int argc, char*argv[]) {
     // FDM is based on Z, X, Y. Not spherical. So we need to convert
     // to spherical. Z=Theta, X=Radius, Y=Phi
     fdm = fdutil3d_init(false, fsrf, ath, ara, aph, nb, 1);
+    float oth, ora, oph;
+    oth = fdm->ozpad; ora = fdm->oxpad; oph = fdm->oypad;
     sf_warning("oth %f, ora %f, oph %f", fdm->ozpad, fdm->oxpad, fdm->oypad);
 
     // create gaussian bell
@@ -318,7 +320,7 @@ int main(int argc, char*argv[]) {
 
 	// TIME LOOP
 	fprintf(stderr,"total num of time steps: %d \n", nt);
-	for (it=0; it<1; it++) {
+	for (it=0; it<nt; it++) {
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
 	    // INJECT STRESS SOURCE
@@ -332,7 +334,7 @@ int main(int argc, char*argv[]) {
 	    dim3 dimBlock2(8,8,8);
 	    solve<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
 			    		  d_vel,
-					  dra, dph, dth, dt,
+					  dra, dph, dth, ora, oph, oth, dt,
 					  nrapad, nphpad, nthpad);
 	    sf_check_gpu_error("solve Kernel");
 
