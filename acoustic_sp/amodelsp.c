@@ -321,6 +321,7 @@ int main(int argc, char*argv[]) {
 	// TIME LOOP
 	fprintf(stderr,"total num of time steps: %d \n", nt);
 	for (it=0; it<nt; it++) {
+
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
 	    // INJECT STRESS SOURCE
@@ -350,14 +351,23 @@ int main(int argc, char*argv[]) {
 	    // FREE SURFACE
 	    freeSurf<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
 	    sf_check_gpu_error("free surface Kernel");
-		    
+		
+	    // RECEIVERS
+	    dim3 dimGridE(MIN(nr, ceil(nr/1024.0f)), 1, 1);
+	    dim3 dimBlockE(MIN(nr, 1024), 1, 1);
+	    lint3d_extract_gpu<<<dimGridE, dimBlockE>>>(d_dd_pp, it, nr,
+							nrapad, nphpad, nthpad, 
+						    	d_po, d_Rjra, d_Rjph, d_Rjth,
+							d_Rw000, d_Rw001, d_Rw010, d_Rw011,
+							d_Rw100, d_Rw101, d_Rw110, d_Rw111);
+    	    sf_check_gpu_error("lint3d_extract_gpu Kernel");	    
 
 	}
 
     }
 
     fprintf(stderr,"\n");
-
+/*
     cudaMemcpy(h_vel, d_po, nthpad*nphpad*nrapad*sizeof(float), cudaMemcpyDefault);
    
     sf_setn(ara, nrapad);
@@ -368,6 +378,18 @@ int main(int argc, char*argv[]) {
     sf_oaxa(Fdat, aph, 2);
 
     sf_floatwrite(h_vel, nthpad*nphpad*nrapad*sizeof(float), Fdat);
+*/
+
+    cudaMemcpy(h_dd_pp, d_dd_pp, nsmp*nr*sizeof(float), cudaMemcpyDefault);
+
+    sf_setn(ar, nr);
+    sf_setn(at, nsmp);
+    sf_setd(at, dt*jdata);
+
+    sf_oaxa(Fdat, at, 2);
+    sf_oaxa(Fdat, ar, 1);
+
+    sf_floatwrite(h_dd_pp, nsmp*nr*sizeof(float), Fdat);
 
     // FREE ALLOCATED MEMORY
     cudaFree(d_ww);

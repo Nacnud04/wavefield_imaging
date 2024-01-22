@@ -1,5 +1,6 @@
 from rsf.proj import *
 import sys, os
+import polar_util as pu
 
 # compile project
 proj = Project()
@@ -82,7 +83,7 @@ Flow('vp',None,'''spike nsp=1 mag=%(vp)g n1=%(nra)d o1=%(ora)g d1=%(dra)g n2=%(n
 fdmod.wavelet('wav',par['frq'],par)
 
 # gen source pos
-rasou = par['ora']+3*(par['nra']-1)*par['dra']/4.
+rasou = par['ora']+(3.5*(par['nra']-1)*par['dra'])/4.
 thsou = par['oth']+(par['nth']-1)*par['dth']/2.
 phsou = par['oph']+(par['nph']-1)*par['dph']/2.
 
@@ -106,7 +107,10 @@ receiver_par['nz'] = par['nra']
 receiver_par['dz'] = par['dra']
 receiver_par['lz'] = par['lra']
 receiver_par['uz'] = par['ura']
-fdmod.horizontal3d('rr-3d', 1, receiver_par)
+
+rec_z = 10.08#par['ora'] + par['nra'] * par['dra']
+
+pu.horizontal3d('rr-3d', rec_z, receiver_par)
 
 # run elastic model
 Flow(['dat', 'tmp'], ['wav', 'vp', 'ss-3d', 'rr-3d'], '''
