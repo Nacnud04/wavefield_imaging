@@ -11,7 +11,7 @@ void expand_cpu_2d(float *a, float *b, int nb, int x_a, int x_b, int z_a, int z_
         // copy into other array
 	for (int ix = 0; ix < x_a; ix++) {
                 for (int iz = 0; iz < z_a; iz++) {
-                        b[INDEX2D(ix+nb,iz+nb,z_b)] = a[INDEX2D(ix,iz,x_a)];
+                        b[INDEX2D(ix+nb,iz+nb,x_b)] = a[INDEX2D(ix,iz,x_a)];
 		}
         }
 	
