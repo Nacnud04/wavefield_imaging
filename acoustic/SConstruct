@@ -53,7 +53,7 @@ for prog in cuda_mains:
 ## ACTUAL SCONSTRUCT
 par = {
     # model dimensions
-    'nx':400, 'ox':-0.05, 'dx':0.00025,  'lx':'x', 'ux':'km',
+    'nx':800, 'ox':-0.05, 'dx':0.00025,  'lx':'x', 'ux':'km',
     'ny':400, 'oy':-0.05, 'dy':0.00025,  'ly':'y', 'uy':'km',
     'nz':400, 'oz':0, 'dz':0.00025,  'lz':'z', 'uz':'km',
     # time params
@@ -78,11 +78,8 @@ par['vp'] = 3.5#2.1
 par['ro'] = 2000
 
 # generate velocity file
-Flow('vp',None,'''spike nsp=1 mag=%(vp)g n1=%(nz)d o1=%(oz)g d1=%(dz)g n2=%(nx)d o2=%(ox)g d2=%(dx)g n3=%(ny)d o3=%(oy)g d3=%(dy)g | 
-                  put label1=%(lz)s label2=%(lx)s label3=%(ly)s unit1=%(uz)s unit2=%(ux)s unit3=%(uy)s''' % par)
-# generate ro file
-Flow('ro',None,'''spike nsp=1 mag=%(ro)g n1=%(nz)d o1=%(oz)g d1=%(dz)g n2=%(nx)d o2=%(ox)g d2=%(dx)g n3=%(ny)d o3=%(oy)g d3=%(dy)g |
-                  put label1=%(lz)s label2=%(lx)s label3=%(ly)s unit1=%(uz)s unit2=%(ux)s unit3=%(uy)s''' % par)
+Flow('vp',None,'''spike nsp=1 mag=%(vp)g n1=%(nx)d o1=%(ox)g d1=%(dx)g n2=%(nz)d o2=%(oz)g d2=%(dz)g n3=%(ny)d o3=%(oy)g d3=%(dy)g | 
+                  put label1=%(lx)s label2=%(lz)s label3=%(ly)s unit1=%(ux)s unit2=%(uz)s unit3=%(uy)s''' % par)
 
 # create a wavelet
 fdmod.wavelet('wav',par['frq'],par)
@@ -100,13 +97,13 @@ fdmod.horizontal3d('rr-3d', 0, par)
 
 # run elastic model
 
-Flow(['dat', 'tmp'], ['wav', 'vp', 'ro', 'ss-3d', 'rr-3d'], '''
+Flow(['dat', 'tmp'], ['wav', 'vp', 'ss-3d', 'rr-3d'], '''
     ./sfemodel3d.x
     jdata=%(jdata)d dabc=%(dabc)s free=%(free)s snap=%(snap)s jsnap=%(jsnap)d ssou=%(ssou)s
     nb=%(nb)d nbell=%(nbell)d nc=%(nc)d gpu=%(gpu)d
-    vel=${SOURCES[1]} den=${SOURCES[2]} sou=${SOURCES[3]} rec=${SOURCES[4]}
+    vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
     ''' % par)
 
-Result('dat', 'window n1=400 f1=80000 | transp | grey')
+Result('dat', f'window n1={par["nx"]} f1=80000 | transp | grey')
 
 End()

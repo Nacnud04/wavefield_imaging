@@ -55,9 +55,9 @@ pi = 3.14159
 # define paramterers
 par = {
     # model dimensions
-    'nra':400,'ora':10   ,'dra':0.00025 ,'lra':'r','ura':'km',
-    'nth':400,'oth':pi/4.,'dth':0.000025,'lth':'θ','uth':'rad',
-    'nph':400,'oph':pi/4.,'dph':0.000025,'lph':'φ','uph':'rad',
+    'nra':800,'ora':10   ,'dra':0.000125 ,'lra':'r','ura':'km',
+    'nth':800,'oth':pi/4.,'dth':0.0000125,'lth':'θ','uth':'rad',
+    'nph':800,'oph':pi/4.,'dph':0.0000125,'lph':'φ','uph':'rad',
     # time parameters
     'kt':100, 'frq':800,
     'nt':1601, 'ot':0, 'dt':0.000025, 'lt':'t', 'ut':'s',

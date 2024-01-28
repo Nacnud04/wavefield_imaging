@@ -304,7 +304,7 @@ int main(int argc, char*argv[]) {
 	for (it=0; it<nt; it++) {
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
-	    // INJECT STRESS SOURCE
+	    // INJECT PRESSURE SOURCE
 	    dim3 dimGrid1(ns, 1);
 	    dim3 dimBlock1(2*nbell+1, 2*nbell+1);
 	    lint2d_bell_gpu<<<dimGrid1, dimBlock1>>>(d_po, d_ww, d_Sw00, d_Sw01, d_Sw10, d_Sw11, 
@@ -349,7 +349,7 @@ int main(int argc, char*argv[]) {
 
     fprintf(stderr,"\n");
 
-    
+  /*  
     cudaMemcpy(h_dd_pp, d_dd_pp, nsmp*nr*sizeof(float), cudaMemcpyDefault);
 
     sf_setn(ar, nr);
@@ -360,10 +360,10 @@ int main(int argc, char*argv[]) {
     sf_oaxa(Fdat, ar, 1);
 
     sf_floatwrite(h_dd_pp, nsmp*nr*sizeof(float), Fdat);    
-    
+    */
 
     // UNCOMMENT TO EXTRACT WAVEFIELD AT FINAL TIMESTEP
-/*
+
     cudaMemcpy(h_vel, d_po, nthpad*nrapad*sizeof(float), cudaMemcpyDefault);
    
     sf_setn(ara, nrapad);
@@ -372,7 +372,7 @@ int main(int argc, char*argv[]) {
     sf_oaxa(Fdat, ath, 2);
 
     sf_floatwrite(h_vel, nthpad*nrapad*sizeof(float), Fdat);
-*/
+
     // FREE ALLOCATED MEMORY
     cudaFree(d_ww);
 

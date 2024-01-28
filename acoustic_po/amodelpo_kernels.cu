@@ -172,10 +172,48 @@ __global__ void freeSurf(float *d_po, int nrapad, int nthpad, int nb) {
 
 __global__ void spongeKernel(float *d_po, int nrapad, int nthpad, int nb){
 
+        int ra = threadIdx.x + blockIdx.x * blockDim.x;
+        int th = threadIdx.y + blockIdx.y * blockDim.y;
+
+        float alpha = 0.95;
+        float wr, wt;
+        int ir, it;
+	float fb;
+
+	int addr = th * nrapad + ra;
+
+	if (ra < nrapad && th < nthpad) {
+
+        	// apply sponge
+ 	        if (ra < nb ) {
+		
+			ir = nb - ra;		
+			fb = ir / (sqrt(2.0)*(4.0*nb));
+                	wr = exp(-fb * fb);
+
+		} else { wr = 1.0; }
+
+		if (th < nb) {
+
+			it = nb - th;
+                	fb = it / (sqrt(2.0)*(4.0*nb));
+                	wt = exp(-fb * fb);
+
+		} else {wt = 1.0;}
+
+		d_po[addr] *= wr * wt;
+
+	}
+}
+
+
+__global__ void spongeKernelOLD(float *d_po, int nrapad, int nthpad, int nb){
+
 	int ra = threadIdx.x + blockIdx.x * blockDim.x;
 	int th = threadIdx.y + blockIdx.y * blockDim.y;
 
-	float alpha = 0.90;
+	float alpha = 0.95;
+	double damp;
 	int i = 1;
 
 	// apply sponge
@@ -193,15 +231,20 @@ __global__ void spongeKernel(float *d_po, int nrapad, int nthpad, int nb){
 			//double damp = exp(-1.0*fabs(((i-1.0)*log(alpha))/nb)); 
 			
 			// dampining funct 2
-			double damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
+			//double damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
 
+			//double damp = 0.5 + 0.5*cos(((1.0*i)/nb)*(3.14159));
+
+			float fb = i / (sqrt(2.0)*(4.0*nb));
+			damp = exp(-fb * fb);	
+			//d_po[addr] = damp;
 			d_po[addr] *= damp;
 		
 		}
 		// apply to high values
 		// NOTE: even though this is applied to all surfaces it only influences
 		//       high th due to high ra being a free surface
-		if (ra > nrapad - nb || th > nthpad - nb) {
+		else if (ra > nrapad - nb || th > nthpad - nb) {
 				
 			if (ra > nrapad - nb) { i = ra - (nrapad - nb); }
 			else { i = th - (nthpad - nb); }
@@ -211,10 +254,17 @@ __global__ void spongeKernel(float *d_po, int nrapad, int nthpad, int nb){
 
                         // dampining funct 2
                         double damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
-
+			
+			//double damp = 0.5 + 0.5*cos(((1.0*i)/nb)*(3.14159));
+			
+			float fb = i / (sqrt(2.0)*(4.0*nb));
+			damp = exp(-fb * fb);
+			//d_po[addr] = damp;
 			d_po[addr] *= damp;
 
 		}
+
+		//else { d_po[addr] = 1; }
 
 	}
 

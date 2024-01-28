@@ -367,7 +367,7 @@ int main(int argc, char*argv[]) {
     }
 
     fprintf(stderr,"\n");
-/*
+
     cudaMemcpy(h_vel, d_po, nthpad*nphpad*nrapad*sizeof(float), cudaMemcpyDefault);
    
     sf_setn(ara, nrapad);
@@ -378,8 +378,8 @@ int main(int argc, char*argv[]) {
     sf_oaxa(Fdat, aph, 2);
 
     sf_floatwrite(h_vel, nthpad*nphpad*nrapad*sizeof(float), Fdat);
-*/
 
+/*
     cudaMemcpy(h_dd_pp, d_dd_pp, nsmp*nr*sizeof(float), cudaMemcpyDefault);
 
     sf_setn(ar, nr);
@@ -390,7 +390,7 @@ int main(int argc, char*argv[]) {
     sf_oaxa(Fdat, ar, 1);
 
     sf_floatwrite(h_dd_pp, nsmp*nr*sizeof(float), Fdat);
-
+*/
     // FREE ALLOCATED MEMORY
     cudaFree(d_ww);
 

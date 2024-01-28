@@ -30,7 +30,6 @@ int main(int argc, char*argv[]) {
     sf_file Fsou=NULL; // sources
     sf_file Frec=NULL; // receviers
     sf_file Fvel=NULL; // velocity
-    sf_file Fden=NULL; // density
     sf_file Fdat=NULL; // data
     		      
     // define axis
@@ -68,7 +67,6 @@ int main(int argc, char*argv[]) {
     // IO
     Fwav = sf_input ("in" ); /* wavelet   */
     Fvel = sf_input ("vel"); /* stiffness */
-    Fden = sf_input ("den"); /* density   */
     Fsou = sf_input ("sou"); /* sources   */
     Frec = sf_input ("rec"); /* receivers */
 
@@ -82,9 +80,9 @@ int main(int argc, char*argv[]) {
 
     // set up axis
     at = sf_iaxa(Fwav,1); sf_setlabel(at,"t"); if(verb) sf_raxa(at); //time
-    az = sf_iaxa(Fvel,1); sf_setlabel(az,"z"); if(verb) sf_raxa(az); //depth
+    az = sf_iaxa(Fvel,2); sf_setlabel(az,"z"); if(verb) sf_raxa(az); //depth
     ay = sf_iaxa(Fvel,3); sf_setlabel(ay,"y"); if(verb) sf_raxa(ay); //y
-    ax = sf_iaxa(Fvel,2); sf_setlabel(ax,"x"); if(verb) sf_raxa(ax); //x
+    ax = sf_iaxa(Fvel,1); sf_setlabel(ax,"x"); if(verb) sf_raxa(ax); //x
 
     as = sf_iaxa(Fsou,2); sf_setlabel(as,"s"); if(verb) sf_raxa(as); //sources    
     ar = sf_iaxa(Frec,2); sf_setlabel(ar,"r"); if(verb) sf_raxa(ar); //receivers
@@ -221,7 +219,6 @@ int main(int argc, char*argv[]) {
 
     sf_warning("Expanding dimensions for boundary conditions to:");
     sf_warning("nxpad: %d | nypad: %d | nzpad: %d", fdm->nxpad, fdm->nypad, fdm->nzpad);
-    sf_floatread(tt1,nz*nx*ny,Fden);
     
     // read and expand velocity
     sf_floatread(tt1,nz*nx*ny,Fvel);
@@ -315,7 +312,7 @@ int main(int argc, char*argv[]) {
         for (int i = 0; i < nsmp * nr; i++){
             h_dd_pp[i] = 0.f;
         }
-
+	sf_warning("nx:%d|ny:%d|nz:%d",fdm->nxpad,fdm->nypad,fdm->nzpad);
 	// -= TIME LOOP =-
 	if(verb) fprintf(stderr,"\n");
         sf_warning("total number of time steps: %d", nt);
@@ -345,8 +342,7 @@ int main(int argc, char*argv[]) {
 			    		   fdm->nxpad, fdm->nypad, fdm->nzpad);
 	    sf_check_gpu_error("shift Kernel");
 
-	    // APPLY FREE SURFACE BOUNDARY CONDITION
-	     
+	    // APPLY FREE SURFACE BOUNDARY CONDITION   
 	    dim3 dimGrid3(ceil(fdm->nxpad/8.0f), ceil(fdm->nypad/8.0f), ceil(fdm->nzpad/8.0f));
 	    dim3 dimBlock3(8,8,8);
 	    freeSurf<<<dimGrid3,dimBlock3>>>(d_po, fdm->nxpad, fdm->nypad, fdm->nzpad, fdm->nb);
@@ -368,9 +364,21 @@ int main(int argc, char*argv[]) {
 									  d_Rw100, d_Rw101, d_Rw110, d_Rw111);
 		sf_check_gpu_error("lint3d_extract_gpu Kernel");
 	    }
-	    
+  
 	}
-        	
+/*    
+	cudaMemcpy(h_vel, d_po, fdm->nxpad*fdm->nypad*fdm->nzpad*sizeof(float), cudaMemcpyDefault);
+
+        sf_setn(ax, fdm->nxpad);
+        sf_setn(ay, fdm->nypad);
+        sf_setn(az, fdm->nzpad);
+        sf_oaxa(Fdat, ax, 1);
+        sf_oaxa(Fdat, ay, 3);
+        sf_oaxa(Fdat, az, 2);
+
+        sf_floatwrite(h_vel, fdm->nxpad*fdm->nypad*fdm->nzpad*sizeof(float), Fdat);	
+*/
+
 	cudaMemcpy(h_dd_pp, d_dd_pp, nsmp*nr*sizeof(float), cudaMemcpyDefault);
 	
 	sf_setn(ar, nr);

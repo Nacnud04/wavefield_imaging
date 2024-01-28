@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#define PI 3.141592654
 
 // macro for 1d index to simulate a 3d matrix
 #define INDEX3D(ix, iy, iz, nx, nz) ((ix)+(iz)*(nx)+(iy)*(nz)*(nx))
@@ -232,6 +233,7 @@ __global__ void spongeKernel(float *d_po, int nrapad, int nphpad, int nthpad, in
 		int i;
 
 		// apply to low values
+		// this is temporarily avoiding iph due to artifacts
 		if (ira < nb || iph < nb || ith < nb){
 
 			if      (ira < nb) {i = nb - ira;}
@@ -244,6 +246,9 @@ __global__ void spongeKernel(float *d_po, int nrapad, int nphpad, int nthpad, in
 			// dampining funct 2
 			double damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
 
+			// damping funct 3
+			//double damp = ((1-alpha)/2)*cos(i*(PI/(0.5*nb)))+0.5+alpha/2;
+
 			d_po[addr] *= damp;
 		
 		} 
@@ -251,7 +256,10 @@ __global__ void spongeKernel(float *d_po, int nrapad, int nphpad, int nthpad, in
 		// do not apply to high values of ra where free surface lies
 		// this wouldn't make a difference if it was applied, just
 		// makes the code shorter
-		if (iph > nphpad - nb || ith > nthpad - nb) {
+
+		// this is also temporarily ignoring the iph > nphpad - nb condition
+		// due to artifacts
+		if (ith > nthpad - nb || iph > nphpad - nb) {
 			
 			if      (iph > nphpad - nb) {i = iph - (nphpad - nb);}
                         else                        {i = ith - (nthpad - nb);}
@@ -261,6 +269,8 @@ __global__ void spongeKernel(float *d_po, int nrapad, int nphpad, int nthpad, in
 
                         // dampining funct 2
                         double damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
+
+			//double damp = ((1-alpha)/2)*cos(i*(PI/(0.5*nb)))+0.5+alpha/2;
 
 			d_po[addr] *= damp;
 
