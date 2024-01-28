@@ -11,7 +11,7 @@ void expand_cpu_3d(float *a, float *b, int nb, int x_a, int x_b, int y_a, int y_
 	for (int ix = 0; ix < x_a; ix++) {
                 for (int iy = 0; iy < y_a; iy++) {
                         for (int iz = 0; iz < z_a; iz++) {
-                                b[INDEX3D(ix+nb,iy+nb,iz+nb,z_b,x_b)] = a[INDEX3D(ix,iy,iz,x_a,z_a)];
+                                b[INDEX3D(ix+nb,iy+nb,iz+nb,x_b,z_b)] = a[INDEX3D(ix,iy,iz,x_a,z_a)];
                         }
                 }
         }
