@@ -31,9 +31,10 @@ int main(int argc, char*argv[]) {
     sf_file Frec=NULL; // receviers
     sf_file Fvel=NULL; // velocity
     sf_file Fdat=NULL; // data
-    		      
+    sf_file Fwfl=NULL; // wavefield    	
+
     // define axis
-    sf_axis at, ax, ay, az;
+    sf_axis at, awt, ax, ay, az;
     sf_axis as, ar; // source, receiver, dimensions
 		
     // define dimension sizes
@@ -47,7 +48,9 @@ int main(int argc, char*argv[]) {
     // device and host velocity
     float *h_vel, *d_vel;
 
-    float *d_fpo, *d_po, *d_ppo; // pressure
+    float *h_po, *d_fpo, *d_po, *d_ppo; // pressure
+    float ***po;
+    float ***uc=NULL;
 
     // linear interpolation weights/indicies
     lint3d cs, cr;
@@ -71,6 +74,7 @@ int main(int argc, char*argv[]) {
     Frec = sf_input ("rec"); /* receivers */
 
     Fdat = sf_output("out"); // data
+    Fwfl = sf_output("wfl"); // wavefield
         
     // define gpu to be used
     int gpu;
@@ -89,6 +93,7 @@ int main(int argc, char*argv[]) {
     sf_axis ar_3;
     ar_3 = sf_iaxa(Frec, 3);
 
+    awt = at;
 
     nt = sf_n(at); dt = sf_d(at);
     nz = sf_n(az); dz = sf_d(az);
@@ -106,15 +111,23 @@ int main(int argc, char*argv[]) {
     
     // how often to extract receiver data?
     if(! sf_getint("jdata",&jdata)) jdata=1;
-    sf_warning("extracting recevier data every %d times", jdata);
     if(snap) {
         if(! sf_getint("jsnap",&jsnap)) jsnap=nt;       // save wavefield every jsnap time steps 
     }
     
+    sf_warning("extracting recevier data every %d timesteps", jsnap);
+    int ntsnap;
+    ntsnap=0;//floor(nt/jsnap);
+    for(it=0; it<nt; it++) {
+        if(it%jsnap==0) ntsnap++;
+    }
+    sf_warning("therefore there are %d extractions", ntsnap);
+    
+    sf_setn(awt,ntsnap);
+    sf_setd(awt,dt*jsnap);
+    
     // how many time steps in each extraction?
     int nsmp = (nt/jdata);
-    sf_warning("therefore there are %d timesteps between extraction", nsmp);
-
     if(! sf_getint("jdata",&jdata)) jdata=1;    // extract receiver data every jdata time steps 
     if(snap) {
                 if(! sf_getint("jsnap",&jsnap)) jsnap=nt;       // save wavefield every jsnap time steps
@@ -168,6 +181,15 @@ int main(int argc, char*argv[]) {
     sf_check_gpu_error("cudaMalloc source wavelet to device");
     cudaMemcpy(d_ww, h_ww, 1*ncs*nt*sizeof(float), cudaMemcpyHostToDevice);
     sf_check_gpu_error("copy source wavelet to device");
+    
+    // SET UP AXIS FOR WAVEFIELD
+    //sf_setn(ax, fdm->nxpad);
+    //sf_setn(ay, fdm->nypad);
+    //sf_setn(az, fdm->nzpad);
+    sf_oaxa(Fwfl, ax, 1);
+    sf_oaxa(Fwfl, ay, 3);
+    sf_oaxa(Fwfl, az, 2);
+    sf_oaxa(Fwfl, awt, 4);
     
     // SETUP SOURCE/RECEIVER COORDS
     pt3d *ss=NULL;
@@ -242,8 +264,12 @@ int main(int argc, char*argv[]) {
     cudaMalloc((void **)&d_ppo, fdm->nzpad * fdm->nxpad * fdm->nypad * sizeof(float));
     cudaMalloc((void **)&d_po, fdm->nzpad * fdm->nxpad * fdm->nypad * sizeof(float));
     cudaMalloc((void **)&d_fpo, fdm->nzpad * fdm->nxpad * fdm->nypad * sizeof(float));
+    h_po=(float*)malloc(fdm->nzpad * fdm->nxpad * fdm->nypad * sizeof(float));
     sf_check_gpu_error("allocate grid arrays");
 
+    // create array for wavefield
+    uc = sf_floatalloc3(sf_n(ax), sf_n(az), sf_n(ay));
+    po = sf_floatalloc3(fdm->nxpad, fdm->nzpad, fdm->nypad);
 
     // ITERATE OVER SHOTS
     for (int isrc = 0; isrc < ns; isrc++){
@@ -316,7 +342,7 @@ int main(int argc, char*argv[]) {
 	// -= TIME LOOP =-
 	if(verb) fprintf(stderr,"\n");
         sf_warning("total number of time steps: %d", nt);
-	int itr = 0;
+	int itr = 0; int wfnum = 0;
 	for (it=0; it<nt; it++) {
 	    
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
@@ -363,6 +389,22 @@ int main(int argc, char*argv[]) {
 									  d_Rw000, d_Rw001, d_Rw010, d_Rw011,
 									  d_Rw100, d_Rw101, d_Rw110, d_Rw111);
 		sf_check_gpu_error("lint3d_extract_gpu Kernel");
+	    }
+
+	    // EXTRACT WAVEFIELD EVERY JSNAP STEPS
+	    if (snap && it % jsnap == 0) {
+		cudaMemcpy(h_po, d_po, fdm->nxpad*fdm->nypad*fdm->nzpad*sizeof(float), cudaMemcpyDefault);
+        	/*
+		for (int x = 0; x < fdm->nxpad; x++){
+                    for (int z = 0; z < fdm->nzpad; z++){
+			for (int y = 0; y < fdm->nypad; y++) {	    
+                            po[y][x][z] = h_po[y*fdm->nzpad*fdm->nxpad + z * fdm->nxpad + x];
+			}
+                    }
+                }
+		*/
+	//	cut3d(po, uc, fdm, az, ax, ay);
+	//	sf_floatwrite(uc[0][0], fdm->nxpad*fdm->nypad*fdm->nzpad*sizeof(float), Fwfl);
 	    }
   
 	}
