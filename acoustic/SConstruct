@@ -63,7 +63,7 @@ par = {
     'nsx':1,  'dsx':0.0050, 'osx':0,
     'nsy':1,  'dsy':0.0050, 'osy':0,
     # model params
-    'snap':'y','jsnap':50,'height':6,
+    'snap':'n','jsnap':50,'height':6,
     'nb':32,'nbell':5,'jdata':1,'dabc':'y',
     'free':'n','ssou':'y', 'nc':1, 'gpu':0,
 }
@@ -108,7 +108,7 @@ fdmod.horizontal3d('rr-3d', 0, par)
 # run elastic model
 
 Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-3d', 'rr-3d'], '''
-    ./sfemodel3d.x
+    ~/WORK/CODE/sfAWEFDcart3d 
     jdata=%(jdata)d dabc=%(dabc)s free=%(free)s snap=%(snap)s jsnap=%(jsnap)d ssou=%(ssou)s
     nb=%(nb)d nbell=%(nbell)d nc=%(nc)d gpu=%(gpu)d
     vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]} wfl=${TARGETS[1]}
