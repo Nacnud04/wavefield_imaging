@@ -63,7 +63,7 @@ par = {
     'nsx':1,  'dsx':0.0050, 'osx':0,
     'nsy':1,  'dsy':0.0050, 'osy':0,
     # model params
-    'snap':'y','jsnap':20,'height':6,
+    'snap':'y','jsnap':50,'height':6,
     'nb':32,'nbell':5,'jdata':1,'dabc':'y',
     'free':'n','ssou':'y', 'nc':1, 'gpu':0,
 }
@@ -82,7 +82,17 @@ Flow('vp',None,'''spike nsp=1 mag=%(vp)g n1=%(nx)d o1=%(ox)g d1=%(dx)g n2=%(nz)d
                   put label1=%(lx)s label2=%(lz)s label3=%(ly)s unit1=%(ux)s unit2=%(uz)s unit3=%(uy)s''' % par)
 
 # create a wavelet
-fdmod.wavelet('wav',par['frq'],par)
+Flow('wav',None,
+         '''
+         spike nsp=1 mag=1 n1=%(nt)d d1=%(dt)g o1=%(ot)g k1=%(kt)d |
+         pad end1=%(nt)d |
+         ricker1 frequency=%(frq)g |
+         window n1=%(nt)d |
+         scale axis=123 | 
+         put label1=t
+         ''' % par)
+
+#fdmod.wavelet('wav',par['frq'],par)
 
 # generate source position
 zsou=par['oz']+(par['nz']-1)*par['dz']/4.
@@ -104,6 +114,6 @@ Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-3d', 'rr-3d'], '''
     vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]} wfl=${TARGETS[1]}
     ''' % par)
 
-Result('dat', f'window n1={par["nx"]} f1=80000 | transp | grey')
+Result('dat', f'window n1={par["nx"]} f1=160000 | transp | grey')
 
 End()

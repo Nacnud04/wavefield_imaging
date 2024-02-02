@@ -49,7 +49,7 @@ int main(int argc, char*argv[]) {
     float *h_vel, *d_vel;
 
     float *h_po, *d_fpo, *d_po, *d_ppo; // pressure
-    float ***po;
+    float ***po=NULL;
     float ***uc=NULL;
 
     // linear interpolation weights/indicies
@@ -186,9 +186,9 @@ int main(int argc, char*argv[]) {
     //sf_setn(ax, fdm->nxpad);
     //sf_setn(ay, fdm->nypad);
     //sf_setn(az, fdm->nzpad);
-    sf_oaxa(Fwfl, ax, 1);
-    sf_oaxa(Fwfl, ay, 3);
+    sf_oaxa(Fwfl, ax, 3);
     sf_oaxa(Fwfl, az, 2);
+    sf_oaxa(Fwfl, ay, 1);
     sf_oaxa(Fwfl, awt, 4);
     
     // SETUP SOURCE/RECEIVER COORDS
@@ -278,7 +278,6 @@ int main(int argc, char*argv[]) {
 
 	pt3dread1(Fsou, ss, 1, 3); // read source coords
 	pt3dread1(Frec, rr, nr, 3); // read receiver coords
-
 	
 	// SET SOURCE ON GPU
 	sf_warning("Source location: ");
@@ -393,18 +392,19 @@ int main(int argc, char*argv[]) {
 
 	    // EXTRACT WAVEFIELD EVERY JSNAP STEPS
 	    if (snap && it % jsnap == 0) {
+		
 		cudaMemcpy(h_po, d_po, fdm->nxpad*fdm->nypad*fdm->nzpad*sizeof(float), cudaMemcpyDefault);
-        	/*
+        	
 		for (int x = 0; x < fdm->nxpad; x++){
                     for (int z = 0; z < fdm->nzpad; z++){
-			for (int y = 0; y < fdm->nypad; y++) {	    
+			for (int y = 0; y < fdm->nypad; y++) { 
                             po[y][x][z] = h_po[y*fdm->nzpad*fdm->nxpad + z * fdm->nxpad + x];
-			}
-                    }
+                        }
+		    }
                 }
-		*/
-	//	cut3d(po, uc, fdm, az, ax, ay);
-	//	sf_floatwrite(uc[0][0], fdm->nxpad*fdm->nypad*fdm->nzpad*sizeof(float), Fwfl);
+		
+		cut3d(po, uc, fdm, az, ax, ay);
+		sf_floatwrite(uc[0][0], fdm->nypad*fdm->nxpad*fdm->nzpad*sizeof(float), Fwfl);
 	    }
   
 	}
