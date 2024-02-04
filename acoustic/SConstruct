@@ -63,7 +63,7 @@ par = {
     'nsx':1,  'dsx':0.0050, 'osx':0,
     'nsy':1,  'dsy':0.0050, 'osy':0,
     # model params
-    'snap':'n','jsnap':50,'height':6,
+    'snap':'y','jsnap':50,'height':6,
     'nb':32,'nbell':5,'jdata':1,'dabc':'y',
     'free':'n','ssou':'y', 'nc':1, 'gpu':0,
 }

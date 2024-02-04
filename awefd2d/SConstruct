@@ -25,7 +25,7 @@ par = {
     'nsy':1,  'dsy':0.0050, 'osy':0,
     # model params
     'snap':'y','jsnap':20,'height':6,
-    'nb':32,'nbell':5,'jdata':1,'dabc':'n',
+    'nb':32,'nbell':5,'jdata':1,'dabc':'y',
     'free':'n','ssou':'y', 'nc':10, 'gpu':0,
 }
 
@@ -71,7 +71,8 @@ fdmod.horizontal('rr-2d', 0, par)
 # run elastic model
 Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-2d', 'rr-2d', 'ro'], 
     '''
-    awefd2d vel=${SOURCES[1]} den=${SOURCES[4]} 
+    ~/WORK/CODE/sfAWEFDcart
+    vel=${SOURCES[1]} den=${SOURCES[4]} 
     sou=${SOURCES[2]} rec=${SOURCES[3]} 
     wfl=${TARGETS[1]} 
     verb=y fsrf=%(free)s expl=n  
