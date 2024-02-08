@@ -62,7 +62,7 @@ par = {
     'kt':100, 'frq':800,
     'nt':1601, 'ot':0, 'dt':0.000025, 'lt':'t', 'ut':'s',
     # model params
-    'snap':'n','jsnap':20,'height':6,
+    'snap':'y','jsnap':100,'height':6,
     'nb':32,'nbell':5,'jdata':1,'dabc':'y',
     'free':'y','ssou':'y','nc':1,'gpu':0,
 }
@@ -113,11 +113,13 @@ rec_z = 10.08#par['ora'] + par['nra'] * par['dra']
 pu.horizontal3d('rr-3d', rec_z, receiver_par)
 
 # run elastic model
-Flow(['dat', 'tmp'], ['wav', 'vp', 'ss-3d', 'rr-3d'], '''
-    ./sfamodelsp.x
-    jdata=%(jdata)d dabc=%(dabc)s free=%(free)s 
+Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-3d', 'rr-3d'], '''
+    ~/WORK/CODE/sfAWEFDspher
+    jdata=%(jdata)d free=%(free)s
+    dabc=%(dabc)s  snap=%(snap)s jsnap=%(jsnap)d
     nb=%(nb)d nbell=%(nbell)d nc=%(nc)d gpu=%(gpu)d
     vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
+    wfl=${TARGETS[1]}
     ''' % par)
 
 End()

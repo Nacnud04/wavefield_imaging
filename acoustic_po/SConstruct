@@ -61,7 +61,7 @@ par = {
     'kt':100, 'frq':800,
     'nt':1600, 'ot':0, 'dt':0.000025, 'lt':'t', 'ut':'s',
     # model params
-    'snap':'y','jsnap':20,'height':6,
+    'snap':'y','bnds':'y','jsnap':20,'height':6,
     'nb':100,'nbell':5,'jdata':1,'dabc':'y',
     'free':'y','ssou':'y','nc':1,'gpu':0,
 }
@@ -109,7 +109,7 @@ putil.horizontal('rr-2d', rec_z, receiver_par)
 Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-2d', 'rr-2d'], '''
     ~/WORK/CODE/sfAWEFDpolar
     jdata=%(jdata)d dabc=%(dabc)s free=%(free)s
-    snap=%(snap)s jsnap=%(jsnap)d
+    snap=%(snap)s bnds=%(bnds)s jsnap=%(jsnap)d
     nb=%(nb)d nbell=%(nbell)d nc=%(nc)d gpu=%(gpu)d
     vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
     wfl=${TARGETS[1]}
