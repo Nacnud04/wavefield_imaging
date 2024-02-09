@@ -1,0 +1,87 @@
+from rsf.proj import * # set up generic proj files
+import sys, os # import madagascar path
+
+# compile project
+proj = Project()
+
+# import modules
+RSFPATH = proj.get('RSFSRC')
+print(f"RSFPATH: {RSFPATH}")
+sys.path.append(os.getenv('RSFSRC')+'/book/Recipes')
+
+# import modules
+import math, fdmod, encode, wemig, stiffness
+
+## ACTUAL SCONSTRUCT
+par = {
+    # model dimensions
+    'nx':600, 'ox':-0.05, 'dx':0.00025,  'lx':'x', 'ux':'km',
+    'nz':400, 'oz':0, 'dz':0.00025,  'lz':'z', 'uz':'km',
+    # time params
+    'kt':100, 'frq':600,
+    'nt':1601,'ot':0, 'dt':0.000025,  'lt':'t', 'ut':'s',
+    # Shot locations
+    'nsx':1,  'dsx':0.0050, 'osx':0,
+    'nsy':1,  'dsy':0.0050, 'osy':0,
+    # model params
+    'snap':'y','bnds':'y','jsnap':20,'height':6,
+    'nb':32,'nbell':5,'jdata':1,'dabc':'y',
+    'free':'y','ssou':'y', 'nc':10, 'gpu':0,
+}
+
+# initalize params in fdm module
+fdmod.param(par)
+par['nframe'] = 20
+par['iframe'] = 8
+
+# thomsen params
+par['vp'] = 3.5#2.1
+par['ro'] = 2000
+
+# generate velocity model
+Flow('vp',None,'''spike nsp=1 mag=%(vp)g n1=%(nz)d o1=%(oz)g d1=%(dz)g n2=%(nx)d o2=%(ox)g d2=%(dx)g| 
+                  put label1=%(lz)s label2=%(lx)s unit1=%(uz)s unit2=%(ux)s''' % par)
+
+# generate density model
+Flow('ro',None,'''spike nsp=1 mag=%(ro)g n1=%(nz)d o1=%(oz)g d1=%(dz)g n2=%(nx)d o2=%(ox)g d2=%(dx)g|
+                  put label1=%(lz)s label2=%(lx)s unit1=%(uz)s unit2=%(ux)s''' % par)
+
+# create a wavelet
+Flow('wav',None,
+         '''
+         spike nsp=1 mag=1 n1=%(nt)d d1=%(dt)g o1=%(ot)g k1=%(kt)d |
+         pad end1=%(nt)d |
+         ricker1 frequency=%(frq)g |
+         window n1=%(nt)d |
+         scale axis=123 | sftransp |
+         put label1=t
+         ''' % par)
+#fdmod.wavelet('wav',par['frq'],par)
+
+# generate source position
+zsou=par['oz']+(par['nz']-1)*par['dz']/4.
+xsou=par['ox']+(par['nx']-1)*par['dx']/2.
+
+# gen point source
+fdmod.point('ss-2d', xsou, zsou, par)
+
+# gen receiver array
+fdmod.horizontal('rr-2d', 0, par)
+
+# run elastic model
+Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-2d', 'rr-2d', 'ro'], 
+    '''
+    ~/WORK/CODE/sfAWEFDcart
+    vel=${SOURCES[1]} den=${SOURCES[4]} 
+    sou=${SOURCES[2]} rec=${SOURCES[3]} 
+    wfl=${TARGETS[1]} 
+    verb=y fsrf=%(free)s expl=n hybrid=n 
+    dabc=%(dabc)s nb=%(nb)d 
+    snap=%(snap)s bnds=%(bnds)s jsnap=%(jsnap)d 
+    jdata=%(jdata)d 
+    ''' % par)
+
+Result('dat', 'window | transp | grey')
+Result('wfl', 'window | grey gainpanel=a')
+
+End()
