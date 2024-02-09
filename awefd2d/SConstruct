@@ -15,7 +15,7 @@ import math, fdmod, encode, wemig, stiffness
 ## ACTUAL SCONSTRUCT
 par = {
     # model dimensions
-    'nx':800, 'ox':-0.05, 'dx':0.00025,  'lx':'x', 'ux':'km',
+    'nx':600, 'ox':-0.05, 'dx':0.00025,  'lx':'x', 'ux':'km',
     'nz':400, 'oz':0, 'dz':0.00025,  'lz':'z', 'uz':'km',
     # time params
     'kt':100, 'frq':600,
@@ -80,5 +80,8 @@ Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-2d', 'rr-2d', 'ro'],
     snap=%(snap)s bnds=%(bnds)s jsnap=%(jsnap)d 
     jdata=%(jdata)d 
     ''' % par)
+
+Result('dat', 'window | transp | grey')
+Result('wfl', 'window | grey gainpanel=a')
 
 End()

@@ -55,14 +55,14 @@ pi = 3.14159
 # define paramterers
 par = {
     # model dimensions
-    'nra':1200,'ora':10    ,'dra':0.000125,'lra':'r','ura':'km',
-    'nth':800,'oth':pi/4.,'dth':0.0000125,'lth':'θ','uth':'rad',
+    'nra':600,'ora':10    ,'dra':0.00025,'lra':'r','ura':'km',
+    'nth':400,'oth':pi/4.,'dth':0.000025,'lth':'θ','uth':'rad',
     # time parameters
     'kt':100, 'frq':800,
     'nt':1600, 'ot':0, 'dt':0.000025, 'lt':'t', 'ut':'s',
     # model params
     'snap':'y','bnds':'y','jsnap':20,'height':6,
-    'nb':100,'nbell':5,'jdata':1,'dabc':'y',
+    'nb':32,'nbell':5,'jdata':1,'dabc':'y',
     'free':'y','ssou':'y','nc':1,'gpu':0,
 }
 
@@ -116,5 +116,7 @@ Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-2d', 'rr-2d'], '''
     ''' % par)
 
 Result('dat', 'window | transp | grey')
+
+Result('wfl', 'window | grey gainpanel=a')
 
 End()

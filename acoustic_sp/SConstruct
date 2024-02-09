@@ -122,4 +122,8 @@ Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-3d', 'rr-3d'], '''
     wfl=${TARGETS[1]}
     ''' % par)
 
+Result('dat', 'window | sftransp | sfgrey')
+
+Result('wfl', 'window n3=1 f3=232 | sfgrey gainpanel=a')
+
 End()
