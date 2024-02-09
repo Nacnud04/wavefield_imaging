@@ -26,7 +26,7 @@ par = {
     # model params
     'snap':'y','bnds':'y','jsnap':20,'height':6,
     'nb':32,'nbell':5,'jdata':1,'dabc':'y',
-    'free':'n','ssou':'y', 'nc':10, 'gpu':0,
+    'free':'y','ssou':'y', 'nc':10, 'gpu':0,
 }
 
 # initalize params in fdm module

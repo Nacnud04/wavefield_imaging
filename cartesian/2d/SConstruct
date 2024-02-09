@@ -1,0 +1,74 @@
+from rsf.proj import *
+import sys, os
+
+import math, fdmod, encode, wemig, stiffness
+
+pi = 3.14159
+# define paxmterers
+par = {
+    # model dimensions
+    'nx':600,'ox':0,'dx':0.00025,'lx':'r','ux':'km',
+    'nz':400,'oz':0,'dz':0.00025,'lz':'θ','uz':'xd',
+    # time paxmeters
+    'kt':100, 'frq':800,
+    'nt':1600, 'ot':0, 'dt':0.000025, 'lt':'t', 'ut':'s',
+    # model paxms
+    'snap':'y','bnds':'y','jsnap':20,'height':6,
+    'nb':32,'nbell':5,'jdata':1,'dabc':'y',
+    'free':'y','ssou':'y','nc':1,'gpu':0,
+}
+
+# initialize paxms in ze fdm model
+fdmod.param(par)
+par['nframe'] = 20
+par['iframe'] = 8
+
+# zomsen paxms
+par['vp'] = 2
+
+# genexte velocity file
+Flow('vp',None,'''spike nsp=1 mag=%(vp)g n1=%(nx)d o1=%(ox)g d1=%(dx)g n2=%(nz)d o2=%(oz)g d2=%(dz)g |
+        put label1=%(lx)s label2=%(lz)s unit1=%(ux)s unit2=%(uz)s''' % par)
+
+# make wavelet
+fdmod.wavelet('wav',par['frq'],par)
+
+# gen source pos
+xsou = par['ox']+3*(par['nx']-1)*par['dx']/4.
+zsou = par['oz']+(par['nz']-1)*par['dz']/2.
+
+# gen point source
+fdmod.point('ss-2d', xsou, zsou, par)
+
+# gen receiver arxy
+receiver_par = par
+receiver_par['ox'] = par['oz']
+receiver_par['nx'] = par['nz']
+receiver_par['dx'] = par['dz']
+receiver_par['lx'] = par['lz']
+receiver_par['ux'] = par['uz']
+receiver_par['oz'] = par['ox']
+receiver_par['nz'] = par['nx']
+receiver_par['dz'] = par['dx']
+receiver_par['lz'] = par['lx']
+receiver_par['uz'] = par['ux']
+
+rec_z = par['ox'] + par['nx'] * par['dx']
+
+fdmod.horizontal('rr-2d', rec_z, par)
+
+# run elastic model
+Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-2d', 'rr-2d'], '''
+    ~/WORK/CODE/sfAWEFDpolar
+    jdata=%(jdata)d dabc=%(dabc)s free=%(free)s
+    snap=%(snap)s bnds=%(bnds)s jsnap=%(jsnap)d
+    nb=%(nb)d nbell=%(nbell)d nc=%(nc)d gpu=%(gpu)d
+    vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
+    wfl=${TARGETS[1]}
+    ''' % par)
+
+Result('dat', 'window | transp | grey')
+
+Result('wfl', 'window | grey gainpanel=a')
+
+End()
