@@ -7,8 +7,8 @@ pi = 3.14159
 # define paxmterers
 par = {
     # model dimensions
-    'nx':600,'ox':0,'dx':0.00025,'lx':'r','ux':'km',
-    'nz':400,'oz':0,'dz':0.00025,'lz':'θ','uz':'xd',
+    'nx':600,'ox':0,'dx':0.00025,'lx':'x','ux':'km',
+    'nz':400,'oz':0,'dz':0.00025,'lz':'z','uz':'km',
     # time paxmeters
     'kt':100, 'frq':800,
     'nt':1600, 'ot':0, 'dt':0.000025, 'lt':'t', 'ut':'s',
@@ -59,7 +59,7 @@ fdmod.horizontal('rr-2d', rec_z, par)
 
 # run elastic model
 Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-2d', 'rr-2d'], '''
-    ~/WORK/CODE/sfAWEFDpolar
+    ~/WORK/CODE/sfAWEFDcart2d
     jdata=%(jdata)d dabc=%(dabc)s free=%(free)s
     snap=%(snap)s bnds=%(bnds)s jsnap=%(jsnap)d
     nb=%(nb)d nbell=%(nbell)d nc=%(nc)d gpu=%(gpu)d
