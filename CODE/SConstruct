@@ -1,0 +1,47 @@
+import os,sys
+rsfroot = os.environ.get('RSFROOT') + '/'
+rsfsrc  = os.environ.get('RSFSRC') + '/'
+SConscript(rsfroot + 'api/c/SConstruct')
+
+sys.path.append(rsfsrc + 'framework')
+import bldutil
+env = bldutil.Debug()
+env.Append(   LIBS=[env.get('DYNLIB','')+'su',env.get('DYNLIB','')+'m'],
+           CPPPATH=[rsfroot+'include'],
+           LIBPATH=[rsfroot+'lib'])
+
+#
+# C mains
+#
+glob_build = False
+bindir = libdir = pkgdir = None
+targets = bldutil.UserSconsTargets()
+targets.c = \
+'''
+AWEFDcart
+AWEFD3D
+'''
+
+targets.build_all(env, glob_build, rsfroot, bindir, libdir, pkgdir)
+
+#
+# CUDA mains
+#
+machine = os.popen('hostname').read().strip()
+if machine=='gpu1' or machine=='gpu3':
+    nvcc    = env.get('NVCC')
+    targetsCUDA = \
+        '''
+        AWEFDpolar
+        AWEFDcart2d
+        AWEFDcart3d
+        AWEFDspher
+        '''
+    for prog in Split(targetsCUDA):
+        cflags  = '-prec-div=true -arch=sm_60 --x=cu'
+        ldflags = '-lcufft'
+        cfile = env.Command(prog+'.c','M'+prog+'.cu','cp $SOURCE $TARGET')
+        prog = env.Program(cfile,
+                           CC=nvcc,
+                           LINKFLAGS=ldflags,
+                           CFLAGS=cflags)
