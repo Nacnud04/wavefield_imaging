@@ -159,6 +159,52 @@ __global__ void freeSurf(float *d_po, int nrapad, int nthpad, int nb) {
 }
 
 
+__global__ void onewayBC(float *uo, float *um,
+	                 float *d_bzl, float *d_bzh, float *d_bxl, float *d_bxh,
+		         int nxpad, int nzpad) {
+
+	int ix = threadIdx.x + blockIdx.x * blockDim.x;
+	int iz = threadIdx.y + blockIdx.y * blockDim.y;
+	int iop
+
+	int addr  = iz * nxpad + ix; 
+
+	if (ix < nxpad && iz < nxpad) {
+
+		for (ix=0; ix<nxpad; ix++) {
+			for (iop=0; iop<NOP; iop++) {
+		
+				// top bc
+				if (iz == NOP-iop) {
+					uo[addr] =  um[(iz+1)*nxpad+ix] + 
+						   (um[addr] - uo[(iz+1)*nxpad+ix]) * d_bzl[ix];
+				}
+				// bottom bc
+				if (iz == nzpad-NOP+iop-1) {
+					uo[addr] =  um[(iz-1)*nxpad+ix] +
+						   (um[addr] - uo[(iz-1)*nxpad+ix]) * d_bzh[ix];
+				}
+			}
+		}
+
+		for (iz=0; iz<nzpad; iz++) {
+			for (iop=0; iop<NOP; iop++) {
+				
+				// left bc
+				if (ix == NOP-iop) {
+					uo[addr] =  um[iz*nxpad+(ix+1)] + 
+						   (um[addr] - uo[iz*nxpad+ix+1]) * d_bxl[iz];
+				}
+				// right bc
+				if (ix == nxpad-NOP+iop-1) {
+					uo[addr] =  um[iz*nxpad+(ix-1)] +
+						   (um[addr] - uo[iz*nxpad+ix-1]) * d_bxh[iz];
+				}
+			}
+		}
+
+	}
+}	
 
 
 __global__ void spongeKernel(float *d_po, int nxpad, int nzpad, int nb){
