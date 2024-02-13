@@ -10,7 +10,7 @@ par = {
     'nx':600,'ox':0,'dx':0.00025,'lx':'x','ux':'km',
     'nz':400,'oz':0,'dz':0.00025,'lz':'z','uz':'km',
     # time paxmeters
-    'kt':100, 'frq':800,
+    'kt':100, 'frq':600,
     'nt':1600, 'ot':0, 'dt':0.000025, 'lt':'t', 'ut':'s',
     # model paxms
     'snap':'y','bnds':'y','jsnap':20,'height':6,
