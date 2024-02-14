@@ -275,6 +275,36 @@ int main(int argc, char*argv[]) {
         sf_oaxa(Fwfl,acx,2);
     }
 
+    // SET UP ONE WAY BOUND CONDITIONS
+    float *one_bzl = sf_floatalloc(nxpad);
+    float *one_bzh = sf_floatalloc(nxpad);
+    float *one_bxl = sf_floatalloc(nzpad);
+    float *one_bxh = sf_floatalloc(nzpad);
+
+    float d;
+    for (int ix=0; ix<nxpad; ix++) {
+	d = h_vel[NOP * nxpad + ix] * (dt / dz);
+	one_bzl[ix] = (1-d)/(1+d);
+	d = h_vel[(nzpad-NOP-1)*nxpad + ix] * (dt / dz);
+	one_bzh[ix] = (1-d)/(1+d);
+    }
+    for (int iz=0; iz<nzpad; iz++) {
+        d = h_vel[iz * nxpad + NOP] * (dt / dx);
+	one_bxl[iz] = (1-d)/(1+d);
+	d = h_vel[iz * nxpad + nxpad-NOP-1] * (dt / dx);
+	one_bxh[iz] = (1-d)/(1+d);
+    }
+
+    float *d_bzl, *d_bzh, *d_bxl, *d_bxh;
+    cudaMalloc((void**)&d_bzl, nxpad*sizeof(float));
+    cudaMemcpy(d_bzl, one_bzl, nxpad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_bzh, nxpad*sizeof(float));
+    cudaMemcpy(d_bzh, one_bzh, nxpad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_bxl, nzpad*sizeof(float));
+    cudaMemcpy(d_bxl, one_bxl, nzpad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_bxh, nzpad*sizeof(float));
+    cudaMemcpy(d_bxh, one_bxh, nzpad*sizeof(float), cudaMemcpyHostToDevice);
+
     // ITERATE OVER SHOTS
     for (int isrc = 0; isrc < ns; isrc ++) {
 
@@ -363,9 +393,16 @@ int main(int argc, char*argv[]) {
 					   nxpad, nzpad);
 	    sf_check_gpu_error("shift Kernel");
 
-	    // SPONGE TIME
+	    // ONE WAY BC
+            onewayBC<<<dimGrid2, dimBlock2>>>(d_po, d_ppo,
+			                      d_bzl, d_bzh, d_bxl, d_bxh,
+					      nxpad, nzpad);
+
+	    // SPONGE
 	    spongeKernel<<<dimGrid2, dimBlock2>>>(d_po, nxpad, nzpad, nb);
 	    sf_check_gpu_error("sponge Kernel");
+	    spongeKernel<<<dimGrid2, dimBlock2>>>(d_ppo, nxpad, nzpad, nb);
+            sf_check_gpu_error("sponge Kernel");
 
 	    // FREE SURFACE
 	    freeSurf<<<dimGrid2, dimBlock2>>>(d_po, nxpad, nzpad, nb);

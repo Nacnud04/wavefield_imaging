@@ -165,7 +165,7 @@ __global__ void onewayBC(float *uo, float *um,
 
 	int ix = threadIdx.x + blockIdx.x * blockDim.x;
 	int iz = threadIdx.y + blockIdx.y * blockDim.y;
-	int iop
+	int iop;
 
 	int addr  = iz * nxpad + ix; 
 
