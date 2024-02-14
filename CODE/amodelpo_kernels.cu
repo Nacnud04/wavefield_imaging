@@ -170,40 +170,49 @@ __global__ void freeSurf(float *d_po, int nrapad, int nthpad, int nb) {
 }
 
 
-__global__ void spongeKernel(float *d_po, int nrapad, int nthpad, int nb){
+__global__ void spongeKernel(float *d_po, int nxpad, int nzpad, int nb){
 
-        int ra = threadIdx.x + blockIdx.x * blockDim.x;
-        int th = threadIdx.y + blockIdx.y * blockDim.y;
+        int x = threadIdx.x + blockIdx.x * blockDim.x;
+        int z = threadIdx.y + blockIdx.y * blockDim.y;
 
-        float alpha = 0.95;
-        float wr, wt;
-        int ir, it;
-	float fb;
+        float alpha = 0.90;
+        double damp;
+        int i = 1;
 
-	int addr = th * nrapad + ra;
+        // apply sponge
+        if (x < nxpad && z < nzpad) {
 
-	if (ra < nrapad && th < nthpad) {
+                int addr = z * nxpad + x;
 
-        	// apply sponge
- 	        if (ra < nb ) {
-		
-			ir = nb - ra;		
-			fb = ir / (sqrt(2.0)*(4.0*nb));
-                	wr = exp(-fb * fb);
+                // apply to low values
+                if (x < nb || z < nb){
 
-		} else { wr = 1.0; }
+                        if (x < nb) { i = nb - x; }
+                        else { i = nb - z; }
 
-		if (th < nb) {
+                        float fb = i / (sqrt(2.0)*(4.0*nb));
+                        damp = exp(-fb * fb);
+                        damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
+                        d_po[addr] *= damp;
 
-			it = nb - th;
-                	fb = it / (sqrt(2.0)*(4.0*nb));
-                	wt = exp(-fb * fb);
+                }
+                // apply to high values
+                // NOTE: even though this is applied to all surfaces it only influences
+                //       high th due to high ra being a free surface
+                else if (x > nxpad - nb || z > nzpad - nb) {
 
-		} else {wt = 1.0;}
+                        if (x > nxpad - nb) { i = x - (nxpad - nb); }
+                        else { i = z - (nzpad - nb); }
 
-		d_po[addr] *= wr * wt;
+                        float fb = i / (sqrt(2.0)*(4.0*nb));
+                        damp = exp(-fb * fb);
+                        damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
+                        d_po[addr] *= damp;
 
-	}
+                }
+
+        }
+
 }
 
 
@@ -265,6 +274,57 @@ __global__ void spongeKernelOLD(float *d_po, int nrapad, int nthpad, int nb){
 		}
 
 		//else { d_po[addr] = 1; }
+
+	}
+
+}
+
+
+__global__ void onewayBC(float *uo, float *um,
+		         float *d_bthl, float *d_bthh, float *d_bral, float *d_brah,
+			 int nrapad, int nthpad) {
+
+	int ira = threadIdx.x + blockIdx.x * blockDim.x;
+	int ith = threadIdx.y + blockIdx.y * blockDim.y;
+	int iop;
+
+	int addr = ith * nrapad + ira;
+
+	if (ira < nrapad && ith < nthpad) {
+
+		for (ira=0; ira<nrapad; ira++) {
+			for (iop=0; iop<NOP; iop++) {
+				
+				// top bc
+				if (ith == NOP-iop) {
+					uo[addr] =  um[(ith+1)*nrapad+ira] +
+						   (um[addr] - uo[(ith+1)*nrapad+ira]) * d_bthl[ira];
+				}
+				// bottom bc
+				if (ith == nthpad-NOP+iop-1) {
+                                        uo[addr] =  um[(ith-1)*nrapad+ira] +
+                                                   (um[addr] - uo[(ith-1)*nrapad+ira]) * d_bthh[ira];
+                                }
+
+			}
+		}
+
+		for (ith=0; ith<nthpad; ith++) {
+			for (iop=0; iop<NOP; iop++) {
+				
+				// left bc
+				if (ira == NOP-iop) {
+					uo[addr] =  um[ith*nrapad+ira+1] +
+                                                   (um[addr] - uo[ith*nrapad+ira+1]) * d_bral[ith];
+				}
+				// bottom bc
+				if (ira == nrapad-NOP+iop-1) {
+					uo[addr] =  um[ith*nrapad+ira-1] +
+                                                   (um[addr] - uo[ith*nrapad+ira-1]) * d_brah[ith];
+				}
+
+			}
+		}		
 
 	}
 

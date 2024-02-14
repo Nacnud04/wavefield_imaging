@@ -277,6 +277,36 @@ int main(int argc, char*argv[]) {
         sf_oaxa(Fwfl,acra,2);
     }
 
+    // SET UP ONE WAY BC's
+    float *one_bthl = sf_floatalloc(nrapad);
+    float *one_bthh = sf_floatalloc(nrapad);
+    float *one_bral = sf_floatalloc(nthpad);
+    float *one_brah = sf_floatalloc(nthpad);
+
+    float d;
+    for (int ira=0; ira<nrapad; ira++) {
+        d = h_vel[NOP * nrapad + ira] * (dt / dth);
+	one_bthl[ira] = (1-d)/(1+d);
+	d = h_vel[(nthpad-NOP-1)*nrapad + ira] * (dt / dth);
+	one_bthh[ira] = (1-d)/(1+d);
+    }
+    for (int ith=0; ith<nthpad; ith++) {
+	d = h_vel[ith * nrapad + NOP] * (dt / dra);
+	one_bral[ith] = (1-d)/(1+d);
+	d = h_vel[ith * nrapad + nrapad-NOP-1] * (dt / dra);
+	one_brah[ith] = (1-d)/(1+d);
+    }
+
+    float *d_bthl, *d_bthh, *d_bral, *d_brah;
+    cudaMalloc((void**)&d_bthl, nrapad*sizeof(float));
+    cudaMemcpy(d_bthl, one_bthl, nrapad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_bthh, nrapad*sizeof(float));
+    cudaMemcpy(d_bthh, one_bthh, nrapad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_bral, nthpad*sizeof(float));
+    cudaMemcpy(d_bral, one_bral, nthpad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_brah, nthpad*sizeof(float));
+    cudaMemcpy(d_brah, one_brah, nthpad*sizeof(float), cudaMemcpyHostToDevice);
+
     // ITERATE OVER SHOTS
     for (int isrc = 0; isrc < ns; isrc ++) {
 
@@ -365,9 +395,16 @@ int main(int argc, char*argv[]) {
 					   nrapad, nthpad);
 	    sf_check_gpu_error("shift Kernel");
 
-	    // SPONGE TIME
+	    // ONE WAY BC
+	    onewayBC<<<dimGrid2, dimBlock2>>>(d_po, d_ppo,
+			                      d_bthl, d_bthh, d_bral, d_brah,
+					      nrapad, nthpad);
+	    
+	    // SPONGE
 	    spongeKernel<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nthpad, nb);
 	    sf_check_gpu_error("sponge Kernel");
+	    spongeKernel<<<dimGrid2, dimBlock2>>>(d_ppo, nrapad, nthpad, nb);
+            sf_check_gpu_error("sponge Kernel");
 
 	    // FREE SURFACE
 	    freeSurf<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nthpad, nb);
