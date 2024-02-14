@@ -177,7 +177,7 @@ __global__ void onewayBC(float *uo, float *um,
 				// top bc
 				if (iz == NOP-iop) {
 					uo[addr] =  um[(iz+1)*nxpad+ix] + 
-						   (um[addr] - uo[(iz+1)*nxpad+ix]) * d_bzl[ix];
+				   		(um[addr] - uo[(iz+1)*nxpad+ix]) * d_bzl[ix];
 				}
 				// bottom bc
 				if (iz == nzpad-NOP+iop-1) {
@@ -193,12 +193,12 @@ __global__ void onewayBC(float *uo, float *um,
 				// left bc
 				if (ix == NOP-iop) {
 					uo[addr] =  um[iz*nxpad+(ix+1)] + 
-						   (um[addr] - uo[iz*nxpad+ix+1]) * d_bxl[iz];
+				   		(um[addr] - uo[iz*nxpad+ix+1]) * d_bxl[iz];
 				}
 				// right bc
 				if (ix == nxpad-NOP+iop-1) {
 					uo[addr] =  um[iz*nxpad+(ix-1)] +
-						   (um[addr] - uo[iz*nxpad+ix-1]) * d_bxh[iz];
+				   		(um[addr] - uo[iz*nxpad+ix-1]) * d_bxh[iz];
 				}
 			}
 		}
