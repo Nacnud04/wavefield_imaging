@@ -192,48 +192,106 @@ __global__ void freeSurf(float *d_po, int nxpad, int nypad, int nzpad, int nb) {
 }
 
 
-__global__ void spongeKernel(float *d_po, int nxpad, int nypad, int nzpad, int nb){
+__global__ void onewayBC(float *uo, float *um,
+			 float *d_bzl, float *d_bzh, 
+			 float *d_bxl, float *d_bxh,
+			 float *d_byl, float *d_byh,
+			 int nxpad, int nypad, int nzpad) {
+	
+	int ix = threadIdx.x + blockIdx.x * blockDim.x;
+	int iy = threadIdx.y + blockIdx.y * blockDim.y;
+	int iz = threadIdx.z + blockIdx.z * blockDim.z;
+	int iop;
 
-	int x = threadIdx.x + blockIdx.x * blockDim.x;
-	int y = threadIdx.y + blockIdx.y * blockDim.y;
-	int z = threadIdx.z + blockIdx.z * blockDim.z;
+	int addr = iy * nxpad * nzpad + iz * nxpad + ix;
 
-	float alpha = 0.90;
+	if (ix < nxpad && iy < nypad && iz < nzpad) {
 
-	// apply sponge
-	if (x < nxpad && y < nypad && z < nzpad) {
-        	
-		// apply to low values
-		if (x < nb || y < nb){
-
-			int addr = y * nxpad * nzpad + z * nxpad + x;
-
-			int i = nb - x;
-			// dampining funct 1
-			double damp = exp(-1.0*fabs(((i-1.0)*log(alpha))/nb)); 
-			
-			// dampining funct 2
-			//double damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
-
-			d_po[addr] *= damp;
-		
+		// top bc
+		if (iz <= NOP) {
+			int taddr = iy*nxpad*nzpad + (iz+1)*nxpad + ix;
+			uo[addr] = um[taddr] + (um[addr] - uo[taddr]) * 
+	                           d_bzl[iy*nxpad + ix];	
 		}
-		// apply to high values
-		if (x > nxpad - nb || y > nypad - nb || z > nzpad - nb) {
-			
-			int addr = y * nxpad * nzpad + z * nxpad + x;
-			
-			int i = x - (nxpad - nb);
-			// dampining funct 1
-			double damp = exp(-1.0*fabs(((i-1.0)*log(alpha))/nb));
+		// bottom bc
+		if (iz >= nzpad-NOP-1) {
+			int taddr = iy*nxpad*nzpad + (iz-1)*nxpad + ix;
+			uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
+			           d_bzh[iy*nxpad + ix];	
+		}
 
-                        // dampining funct 2
-                        //double damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
+                if (ix <= NOP) {
+                        int taddr = iy*nxpad*nzpad + iz*nxpad + ix + 1;
+                        uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *                                                                  d_bxl[iy*nzpad + iz];
+                }
+                if (ix >= nxpad-NOP-1) {
+                        int taddr = iy*nxpad*nzpad + iz*nxpad + ix - 1;
+                        uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
+                                   d_bzh[iy*nzpad + iz];
+                }
 
-			d_po[addr] *= damp;
-
+		if (iy <= NOP) {
+			int taddr = (iy+1)*nxpad*nzpad + iz*nxpad + ix;
+			uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
+				   d_byl[iz*nxpad + ix];
+		}
+		if (iy >= nypad-NOP-1) {
+			int taddr = (iy-1)*nxpad*nzpad + iz*nxpad + ix;
+			uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
+				   d_byh[iz*nxpad + ix];
 		}
 
 	}
 
 }
+
+
+__global__ void spongeKernel(float *d_po, int nxpad, int nypad, int nzpad, int nb){
+
+        int x = threadIdx.x + blockIdx.x * blockDim.x;
+        int y = threadIdx.y + blockIdx.y * blockDim.y;
+	int z = threadIdx.z + blockIdx.z * blockDim.z;
+
+        float alpha = 0.90;
+        double damp;
+        int i = 1;
+
+        // apply sponge
+        if (x < nxpad && y < nypad && z < nzpad) {
+
+                int addr = y * nxpad * nzpad + z * nxpad + x;
+
+                // apply to low values
+                if (x < nb || y < nb || z < nb){
+
+                        if (x < nb) { i = nb - x; }
+			else if (y < nb) { i = nb - y; }
+                        else { i = nb - z; }
+
+                        float fb = i / (sqrt(2.0)*(4.0*nb));
+                        damp = exp(-fb * fb);
+                        damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
+                        d_po[addr] *= damp;
+
+                }
+                // apply to high values
+                // NOTE: even though this is applied to all surfaces it only influences
+                //       high th due to high ra being a free surface
+                else if (x > nxpad - nb || y > nypad - nb || z > nzpad - nb) {
+
+                        if (x > nxpad - nb) { i = x - (nxpad - nb); }
+			else if (y > nypad - nb) { i = y - (nypad - nb);}
+                        else { i = z - (nzpad - nb); }
+
+                        float fb = i / (sqrt(2.0)*(4.0*nb));
+                        damp = exp(-fb * fb);
+                        damp = exp(-1.0*fabs((pow((i-1.0),2)*log(alpha))/(pow(nb,2))));
+                        d_po[addr] *= damp;
+
+                }
+
+        }
+
+}
+
+

@@ -287,6 +287,54 @@ int main(int argc, char*argv[]) {
         sf_oaxa(Fwfl, acy, 3);
     }
 
+    // SET UP ONE WAY BOUND CONDITIONS
+    float *one_bzl = sf_floatalloc(fdm->nxpad * fdm->nypad);
+    float *one_bzh = sf_floatalloc(fdm->nxpad * fdm->nypad);
+    float *one_bxl = sf_floatalloc(fdm->nzpad * fdm->nypad);
+    float *one_bxh = sf_floatalloc(fdm->nzpad * fdm->nypad);
+    float *one_byl = sf_floatalloc(fdm->nxpad * fdm->nzpad);
+    float *one_byh = sf_floatalloc(fdm->nxpad * fdm->nzpad);
+
+    float d;
+    for (int ix=0; ix<fdm->nxpad; ix++) {
+	for (int iy=0; iy<fdm->nypad; iy++) {
+            d = h_vel[iy*fdm->nxpad*fdm->nzpad + NOP*fdm->nxpad + ix] * (dt / dz);
+            one_bzl[iy*fdm->nxpad+ix] = (1-d)/(1+d);
+            d = h_vel[iy*fdm->nxpad*fdm->nzpad + (fdm->nzpad-NOP-1)*fdm->nxpad + ix] * (dt / dz);
+            one_bzh[iy*fdm->nxpad+ix] = (1-d)/(1+d);
+	}
+    }
+    for (int iz=0; iz<fdm->nzpad; iz++) {
+	for (int iy=0; iy<fdm->nypad; iy++) {
+            d = h_vel[iy*fdm->nxpad*fdm->nzpad + iz*fdm->nxpad + NOP] * (dt / dx);
+            one_bxl[iy*fdm->nzpad+iz] = (1-d)/(1+d);
+            d = h_vel[iy*fdm->nxpad*fdm->nzpad + iz*fdm->nxpad + fdm->nxpad-NOP-1] * (dt / dx);
+            one_bxh[iy*fdm->nzpad+iz] = (1-d)/(1+d);
+	}
+    }
+    for (int iz=0; iz<fdm->nzpad; iz++) {
+	for (int ix=0; ix<fdm->nxpad; ix++) {
+	    d = h_vel[NOP*fdm->nxpad*fdm->nzpad + iz*fdm->nxpad + ix] * (dt / dy);
+	    one_byl[iz*fdm->nxpad+ix] = (1-d)/(1+d);
+	    d = h_vel[(fdm->nypad-NOP-1)*fdm->nxpad*fdm->nzpad + iz*fdm->nxpad + ix] * (dt / dy);
+	    one_byh[iz*fdm->nxpad+iz] = (1-d)/(1+d);
+	}
+    }
+
+    float *d_bzl, *d_bzh, *d_bxl, *d_bxh, *d_byl, *d_byh;
+    cudaMalloc((void**)&d_bzl, fdm->nxpad*fdm->nypad*sizeof(float));
+    cudaMemcpy(d_bzl, one_bzl, fdm->nxpad*fdm->nypad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_bzh, fdm->nxpad*fdm->nypad*sizeof(float));
+    cudaMemcpy(d_bzh, one_bzh, fdm->nxpad*fdm->nypad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_bxl, fdm->nzpad*fdm->nypad*sizeof(float));
+    cudaMemcpy(d_bxl, one_bxl, fdm->nzpad*fdm->nypad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_bxh, fdm->nzpad*fdm->nypad*sizeof(float));
+    cudaMemcpy(d_bxh, one_bxh, fdm->nzpad*fdm->nypad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_byl, fdm->nzpad*fdm->nxpad*sizeof(float));
+    cudaMemcpy(d_byl, one_byl, fdm->nzpad*fdm->nxpad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_byh, fdm->nzpad*fdm->nxpad*sizeof(float));
+    cudaMemcpy(d_byh, one_byh, fdm->nzpad*fdm->nxpad*sizeof(float), cudaMemcpyHostToDevice);
+
     // ITERATE OVER SHOTS
     for (int isrc = 0; isrc < ns; isrc++){
 
@@ -389,9 +437,16 @@ int main(int argc, char*argv[]) {
 	    freeSurf<<<dimGrid3,dimBlock3>>>(d_po, fdm->nxpad, fdm->nypad, fdm->nzpad, fdm->nb);
 	    sf_check_gpu_error("freeSurf Kernel");
 
+	    // ONE WAY BC
+	    onewayBC<<<dimGrid3,dimBlock3>>>(d_po, d_ppo, 
+			                     d_bzl, d_bzh, d_bxl, d_bxh, d_byl, d_byh, 
+					     fdm->nxpad, fdm->nypad, fdm->nzpad);
+	    
 	    // APPLY SPONGE BOUNDARY CONDITION
 	    spongeKernel<<<dimGrid3, dimBlock3>>>(d_po, fdm->nxpad, fdm->nypad, fdm->nzpad, fdm->nb);
 	    sf_check_gpu_error("sponge Kernel");
+	    spongeKernel<<<dimGrid3, dimBlock3>>>(d_ppo, fdm->nxpad, fdm->nypad, fdm->nzpad, fdm->nb);
+            sf_check_gpu_error("sponge Kernel");
 	    
 	    // MOVE DATA TO GPU
 	    if (it % jdata == 0) {
