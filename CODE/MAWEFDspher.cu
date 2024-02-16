@@ -301,6 +301,54 @@ int main(int argc, char*argv[]) {
     
     }
 
+    // SET UP ONE WAY BOUND CONDITIONS
+    float *one_bthl = sf_floatalloc(nrapad * nphpad);
+    float *one_bthh = sf_floatalloc(nrapad * nphpad);
+    float *one_bral = sf_floatalloc(nthpad * nphpad);
+    float *one_brah = sf_floatalloc(nthpad * nphpad);
+    float *one_bphl = sf_floatalloc(nrapad * nthpad);
+    float *one_bphh = sf_floatalloc(nrapad * nthpad);
+
+    float d;
+    for (int ira=0; ira<nrapad; ira++) {
+        for (int iph=0; iph<nphpad; iph++) {
+            d = h_vel[iph*nrapad*nthpad + NOP*nrapad + ira] * (dt / dth);
+            one_bthl[iph*nrapad+ira] = (1-d)/(1+d);
+            d = h_vel[iph*nrapad*nthpad + (nthpad-NOP-1)*nrapad + ira] * (dt / dth);
+            one_bthh[iph*nrapad+ira] = (1-d)/(1+d);
+        }
+    }
+    for (int ith=0; ith<nthpad; ith++) {
+        for (int iph=0; iph<nphpad; iph++) {
+            d = h_vel[iph*nrapad*nthpad + ith*nrapad + NOP] * (dt / dra);
+            one_bral[iph*nthpad+ith] = (1-d)/(1+d);
+            d = h_vel[iph*nrapad*nthpad + ith*nrapad + nrapad-NOP-1] * (dt / dra);
+            one_brah[iph*nthpad+ith] = (1-d)/(1+d);
+        }
+    }
+    for (int ith=0; ith<nthpad; ith++) {
+        for (int ira=0; ira<nrapad; ira++) {
+            d = h_vel[NOP*nrapad*nthpad + ith*nrapad + ira] * (dt / dph);
+            one_bphl[ith*nrapad+ira] = (1-d)/(1+d);
+            d = h_vel[(nthpad-NOP-1)*nrapad*nthpad + ith*nrapad + ira] * (dt / dph);
+            one_bphh[ith*nrapad+ira] = (1-d)/(1+d);
+        }
+    }
+
+    float *d_bthl, *d_bthh, *d_bral, *d_brah, *d_bphl, *d_bphh;
+    cudaMalloc((void**)&d_bthl, nrapad*nphpad*sizeof(float));
+    cudaMemcpy(d_bthl, one_bthl, nrapad*nphpad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_bthh, nrapad*nphpad*sizeof(float));
+    cudaMemcpy(d_bthh, one_bthh, nrapad*nphpad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_bral, nthpad*nphpad*sizeof(float));
+    cudaMemcpy(d_bral, one_bral, nthpad*nphpad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_brah, nthpad*nphpad*sizeof(float));
+    cudaMemcpy(d_brah, one_brah, nthpad*nphpad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_bphl, nthpad*nrapad*sizeof(float));
+    cudaMemcpy(d_bphl, one_bphl, nthpad*nrapad*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_bphh, nthpad*nrapad*sizeof(float));
+    cudaMemcpy(d_bphh, one_bphh, nthpad*nrapad*sizeof(float), cudaMemcpyHostToDevice);
+
     // ITERATE OVER SHOTS
     for (int isrc = 0; isrc < ns; isrc ++) {
 
@@ -398,9 +446,16 @@ int main(int argc, char*argv[]) {
 					   nrapad, nphpad, nthpad);
 	    sf_check_gpu_error("shift Kernel");
 
+	    // ONE WAY BC
+	    onewayBC<<<dimGrid2,dimBlock2>>>(d_po, d_ppo,
+                                             d_bthl, d_bthh, d_bral, d_brah, d_bphl, d_bphh,
+                                             nrapad, nphpad, nthpad);
+
 	    // SPONGE
 	    spongeKernel<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
 	    sf_check_gpu_error("sponge Kernel");
+	    spongeKernel<<<dimGrid2, dimBlock2>>>(d_ppo, nrapad, nphpad, nthpad, nb);
+            sf_check_gpu_error("sponge Kernel");
 
 	    // FREE SURFACE
 	    freeSurf<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);

@@ -108,7 +108,7 @@ receiver_par['dz'] = par['dra']
 receiver_par['lz'] = par['lra']
 receiver_par['uz'] = par['ura']
 
-rec_z = 10.08#par['ora'] + par['nra'] * par['dra']
+rec_z = 10.08
 
 pu.horizontal3d('rr-3d', rec_z, receiver_par)
 
@@ -122,7 +122,7 @@ Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-3d', 'rr-3d'], '''
     wfl=${TARGETS[1]}
     ''' % par)
 
-Result('dat', 'window | sftransp | sfgrey')
+Result('dat', 'window n1=400 f1=320000 | sftransp | sfgrey')
 
 Result('wfl', 'window n3=1 f3=232 | sfgrey gainpanel=a')
 
