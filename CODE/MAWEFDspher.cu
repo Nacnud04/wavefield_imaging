@@ -128,9 +128,9 @@ int main(int argc, char*argv[]) {
 
 	if(! sf_getint("jsnap",&jsnap)) jsnap=nt; // save wavefield every nt timesteps
 
-	acth = sf_maxa(nth, sf_o(ath), dth);
-	acra = sf_maxa(nra, sf_o(ara), dra);
-	acph = sf_maxa(nph, sf_o(aph), dph);
+	acth = sf_maxa(nth, sf_o(ath), dth); sf_setlabel(acth,"lon/th (rad)");
+	acra = sf_maxa(nra, sf_o(ara), dra); sf_setlabel(acra,"ra (km)"); // radius
+	acph = sf_maxa(nph, sf_o(aph), dph); sf_setlabel(acph,"lat/ph (rad)"); 
 
 	int ntsnap = 0;
 	for (it=0; it<nt; it++) {
@@ -278,7 +278,7 @@ int main(int argc, char*argv[]) {
     cudaMalloc((void**)&d_fpo, nthpad*nphpad*nrapad*sizeof(float));
     h_po=(float*)malloc(nthpad * nrapad * nphpad * sizeof(float));
     sf_check_gpu_error("allocate pressure arrays");
-
+    
     if (snap) {
     
 	cudaMalloc((void**)&d_po3d, nthpad*nphpad*nrapad*sizeof(float));
@@ -300,7 +300,7 @@ int main(int argc, char*argv[]) {
 	}
     
     }
-
+    
     // SET UP ONE WAY BOUND CONDITIONS
     float *one_bthl = sf_floatalloc(nrapad * nphpad);
     float *one_bthh = sf_floatalloc(nrapad * nphpad);
@@ -334,7 +334,7 @@ int main(int argc, char*argv[]) {
             one_bphh[ith*nrapad+ira] = (1-d)/(1+d);
         }
     }
-
+    
     float *d_bthl, *d_bthh, *d_bral, *d_brah, *d_bphl, *d_bphh;
     cudaMalloc((void**)&d_bthl, nrapad*nphpad*sizeof(float));
     cudaMemcpy(d_bthl, one_bthl, nrapad*nphpad*sizeof(float), cudaMemcpyHostToDevice);
@@ -386,7 +386,6 @@ int main(int argc, char*argv[]) {
 	cudaMemcpy(d_Sjph, cs->jy, 1 * sizeof(int), cudaMemcpyHostToDevice);
 	sf_check_gpu_error("copy source coords to device");
 
-
 	// SET RECEIVERS ON THE GPU
 	sf_warning("Receiver Count: %d", nr);
 	cr = lint3d_make(nr, rr, fdm);
@@ -426,15 +425,18 @@ int main(int argc, char*argv[]) {
 
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
-	    // INJECT STRESS SOURCE
-	    dim3 dimGrid1(ns, 1, 1);
-	    dim3 dimBlock1(2*nbell+1, 2*nbell+1, 1);
-	    lint3d_bell_gpu<<<dimGrid1, dimBlock1>>>(d_po, d_ww, d_Sw000, d_Sw001, d_Sw010, d_Sw011, d_Sw100, d_Sw101, d_Sw110, d_Sw111, d_bell, d_Sjra, d_Sjph, d_Sjth, it, ncs, 1, 0, nbell, nrapad, nthpad);
-	    sf_check_gpu_error("lint3d_bell_gpu Kernel"); 
 
-	    // APPLY WAVE EQUATION
+	    // INJECT STRESS SOURCE
 	    dim3 dimGrid2(ceil(nrapad/8.0f),ceil(nphpad/8.0f),ceil(nthpad/8.0f));
 	    dim3 dimBlock2(8,8,8);
+	    inject_single_source<<<dimGrid2, dimBlock2>>>(d_po, d_ww, 
+			    d_Sw000, d_Sw001, d_Sw010, d_Sw011, 
+			    d_Sw100, d_Sw101, d_Sw110, d_Sw111, 
+			    d_Sjra, d_Sjph, d_Sjth, 
+			    it, nrapad, nphpad, nthpad);
+	    sf_check_gpu_error("inject_single_source Kernel"); 
+
+	    // APPLY WAVE EQUATION
 	    solve<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
 			    		  d_vel,
 					  dra, dph, dth, ora, oph, oth, dt,

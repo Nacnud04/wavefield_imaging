@@ -50,7 +50,7 @@ void expand_cpu_3d(float *a, float *b, int nb, int x_a, int x_b, int y_a, int y_
 	
 }
 
-__global__ void lint3d_bell_gpu(float *d_uu, float *d_ww, float *d_Sw000, float *d_Sw001, float *d_Sw010, float *d_Sw011, float *d_Sw100, float *d_Sw101, float *d_Sw110, float *d_Sw111, float *d_bell, int *d_jx, int *d_jy, int *d_jz, int it, int nc, int ns, int c, int nbell, int nxpad, int nzpad) {
+__global__ void lint3d_bell_gpu(float *d_uu, float *d_ww, float *d_Sw000, float *d_Sw001, float *d_Sw010, float *d_Sw011, float *d_Sw100, float *d_Sw101, float *d_Sw110, float *d_Sw111, float *d_bell, int *d_jz, int *d_jy, int *d_jx, int it, int nc, int ns, int c, int nbell, int nxpad, int nzpad) {
 
         int ix = threadIdx.x;
         int iy = threadIdx.y;
@@ -72,6 +72,52 @@ __global__ void lint3d_bell_gpu(float *d_uu, float *d_ww, float *d_Sw000, float 
         atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp + 1) * nxpad + (x_comp    )], ((wa * d_Sw101[ia])));
         atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp)     * nxpad + (x_comp + 1)], ((wa * d_Sw110[ia])));
         atomicAdd(&d_uu[(y_comp + 1) * xz + (z_comp + 1) * nxpad + (x_comp + 1)], ((wa * d_Sw111[ia])));
+
+}
+
+__global__ void inject_single_source(float *d_uu, float *d_ww, 
+		float *d_Sw000, float *d_Sw001, float *d_Sw010, float *d_Sw011, 
+		float *d_Sw100, float *d_Sw101, float *d_Sw110, float *d_Sw111, 
+		int *d_jx, int *d_jy, int *d_jz, 
+		int it, 
+		int nxpad, int nypad, int nzpad) {
+
+        int ix = threadIdx.x + blockIdx.x * blockDim.x;
+        int iy = threadIdx.y + blockIdx.y * blockDim.y;
+        int iz = threadIdx.z + blockIdx.z * blockDim.z;
+
+        int s_x = d_jx[0];
+        int s_y = d_jy[0];
+        int s_z = d_jz[0];
+
+        float wa = d_ww[it];
+
+        int addr = iy * nxpad * nzpad + iz * nxpad + ix;
+
+        if (ix == s_x && iy == s_y && iz == s_z){
+                d_uu[addr] = wa * d_Sw000[0];
+        }
+        if (ix == s_x && iy == s_y && iz == s_z + 1){
+                d_uu[addr] = wa * d_Sw001[0];
+        }
+        if (ix == s_x + 1 && iy == s_y && iz == s_z){
+                d_uu[addr] = wa * d_Sw010[0];
+        }
+        if (ix == s_x + 1 && iy == s_y && iz == s_z + 1){
+                d_uu[addr] = wa * d_Sw011[0];
+        }
+        if (ix == s_x && iy == s_y + 1 && iz == s_z){
+                d_uu[addr] = wa * d_Sw100[0];
+        }
+        if (ix == s_x && iy == s_y + 1 && iz == s_z + 1){
+                d_uu[addr] = wa * d_Sw101[0];
+        }
+        if (ix == s_x + 1 && iy == s_y + 1 && iz == s_z){
+                d_uu[addr] = wa * d_Sw110[0];
+        }
+        if (ix == s_x + 1 && iy == s_y + 1 && iz == s_z + 1){
+                d_uu[addr] = wa * d_Sw111[0];
+        }
 
 }
 

@@ -122,8 +122,9 @@ Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-3d', 'rr-3d'], '''
     wfl=${TARGETS[1]}
     ''' % par)
 
-Result('dat', 'window n1=400 f1=320000 | sftransp | sfgrey')
+Result('dat', 'window n1=800 f1=320000 | sftransp | sfgrey')
 
-Result('wfl', 'window n3=1 f3=232 | sfgrey gainpanel=a')
+if par['snap'] == 'y':
+    Result('wfl', 'window n3=1 f3=232 | sfgrey gainpanel=a')
 
 End()
