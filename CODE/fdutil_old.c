@@ -551,7 +551,7 @@ lint3d lint3d_make(int    na,
 	    ca->jz[ia] = 0; 
 	    ca->jx[ia] = 0;
 	    ca->jy[ia] = 0;
-	    
+
 	    f1 = 1; 
 	    f2 = 0;
 	    f3 = 0;
