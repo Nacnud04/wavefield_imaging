@@ -56,7 +56,6 @@ int main(int argc, char*argv[]) {
     // vars for wavefield return
     float *h_po;
     float ***po=NULL;
-    float ***d_po3d=NULL;
     float ***oslice=NULL;
 
     // linear interpolation of weights and indicies
@@ -115,41 +114,6 @@ int main(int argc, char*argv[]) {
     sf_warning("dra:%f|dth:%f|dph:%f|dt:%f", dra, dth, dph, dt);
 
     
-    // define bell size
-    if(! sf_getint("nbell",&nbell)) nbell=5;  //bell size
-    sf_warning("nbell=%d",nbell);
-    
-    // how often to extract receiver data?
-    if(! sf_getint("jdata",&jdata)) jdata=1;
-    int nsmp = (nt/jdata);
-    sf_warning("extracting recevier %d times", nsmp);
-    
-    if(snap) {
-
-	if(! sf_getint("jsnap",&jsnap)) jsnap=nt; // save wavefield every nt timesteps
-
-	acth = sf_maxa(nth, sf_o(ath), dth); sf_setlabel(acth,"lon/th (rad)");
-	acra = sf_maxa(nra, sf_o(ara), dra); sf_setlabel(acra,"ra (km)"); // radius
-	acph = sf_maxa(nph, sf_o(aph), dph); sf_setlabel(acph,"lat/ph (rad)"); 
-
-	int ntsnap = 0;
-	for (it=0; it<nt; it++) {
-	    if(it%jsnap==0) ntsnap++;
-	}
-
-	sf_warning("There are %d wavefield extractions", ntsnap);
-
-	sf_setn(awt, ntsnap);
-	sf_setd(awt, dt*jsnap);
-
-	sf_oaxa(Fwfl, acth, 1);
-	sf_oaxa(Fwfl, acra, 2);
-	sf_oaxa(Fwfl, acph, 3);
-	sf_oaxa(Fwfl, awt, 4);
-
-    }
-    
-    
     // define increase in domain of model for boundary conditions
     if( !sf_getint("nb",&nb) || nb<NOP) nb=NOP;
 
@@ -161,6 +125,53 @@ int main(int argc, char*argv[]) {
     oth = fdm->ozpad; ora = fdm->oxpad; oph = fdm->oypad;
     sf_warning("oth %f, ora %f, oph %f", fdm->ozpad, fdm->oxpad, fdm->oypad);
 
+    // x, y, z pad to nrapad, nthpad, nphpad
+    int nrapad=fdm->nxpad; int nthpad=fdm->nzpad; int nphpad=fdm->nypad;
+    h_vel = (float*)malloc(nrapad * nthpad * nphpad * sizeof(float));
+
+    // define bell size
+    if(! sf_getint("nbell",&nbell)) nbell=5;  //bell size
+    sf_warning("nbell=%d",nbell);
+    
+    // how often to extract receiver data?
+    if(! sf_getint("jdata",&jdata)) jdata=1;
+    int nsmp = (nt/jdata);
+    sf_warning("extracting recevier %d times", nsmp);
+    
+    if(snap) {
+
+        if(! sf_getint("jsnap",&jsnap)) jsnap=nt; // save wavefield every nt timesteps
+
+        acth = sf_maxa(nth, sf_o(ath), dth); sf_setlabel(acth,"lat/th (rad)");
+        acra = sf_maxa(nra, sf_o(ara), dra); sf_setlabel(acra,"ra (km)"); // radius
+        acph = sf_maxa(nph, sf_o(aph), dph); sf_setlabel(acph,"lon/ph (rad)"); 
+
+        int ntsnap = 0;
+        for (it=0; it<nt; it++) {
+            if(it%jsnap==0) ntsnap++;
+        }
+
+        sf_warning("There are %d wavefield extractions", ntsnap);
+
+        sf_setn(awt, ntsnap);
+        sf_setd(awt, dt*jsnap);
+
+        if (bnds) {
+
+            sf_setn(acth, nthpad);
+            sf_setn(acra, nrapad);
+            sf_setn(acph, nphpad);    
+            
+        }
+
+        sf_oaxa(Fwfl, acth, 2);
+        sf_oaxa(Fwfl, acra, 1);
+        sf_oaxa(Fwfl, acph, 3);
+
+        sf_oaxa(Fwfl, awt, 4);
+
+    }
+    
     // create gaussian bell
     if (nbell * 2 + 1 > 32) {sf_error("nbell must be <= 15\n");}
     float *h_bell, *d_bell;
@@ -173,11 +184,11 @@ int main(int argc, char*argv[]) {
     
     // iterate over bell space
     for (ira=-nbell;ira<=nbell;ira++) {
-	for (ith=-nbell;ith<=nbell;ith++) {
-            for (iph=-nbell;iph<=nbell;iph++) {
-		h_bell[(iph+nbell)*(2*nbell+1)*(2*nbell+1) + (ith+nbell)*(2*nbell+1) + (ira+nbell)] = exp(-(iph*iph+ith*ith+ira*ira)/s);
-	    }
-	}
+        for (ith=-nbell;ith<=nbell;ith++) {
+                for (iph=-nbell;iph<=nbell;iph++) {
+            h_bell[(iph+nbell)*(2*nbell+1)*(2*nbell+1) + (ith+nbell)*(2*nbell+1) + (ira+nbell)] = exp(-(iph*iph+ith*ith+ira*ira)/s);
+            }
+        }
     }
 
     sf_warning("gauss bell 1d size: %d with dims: x:%d, y:%d, z:%d", (nbell*2) * (2*nbell+1) * (2*nbell+1) + (nbell*2) * (2*nbell+1) + (nbell*2), nbell*2+1, nbell*2+1, nbell*2+1);
@@ -250,9 +261,6 @@ int main(int argc, char*argv[]) {
     // allocate memory to import velocity data
     float *tt1 = (float*)malloc(nra * nth * nph * sizeof(float));
 
-    // x, y, z pad to nrapad, nthpad, nphpad
-    int nrapad=fdm->nxpad; int nthpad=fdm->nzpad; int nphpad=fdm->nypad;
-    h_vel = (float*)malloc(nrapad * nthpad * nphpad * sizeof(float));
 
     // expand dimensions to allow for absorbing boundary conditions
     sf_warning("Expanding dimensions to allocate for bound. conditions");
@@ -280,24 +288,9 @@ int main(int argc, char*argv[]) {
     sf_check_gpu_error("allocate pressure arrays");
     
     if (snap) {
-    
-	cudaMalloc((void**)&d_po3d, nthpad*nphpad*nrapad*sizeof(float));
-        sf_check_gpu_error("Allocate 3d pressure array for wavefield extraction");
 
-	oslice = sf_floatalloc3(sf_n(ath), sf_n(ara), sf_n(aph));
-	po = sf_floatalloc3(nthpad, nrapad, nphpad);
-    
-	if (bnds) {
-
-             sf_setn(acth, nthpad);
-	     sf_setn(acra, nrapad);
-	     sf_setn(acph, nphpad);    
-		
-	     sf_oaxa(Fwfl, acth, 1);
-             sf_oaxa(Fwfl, acra, 2);
-             sf_oaxa(Fwfl, acph, 3);
-	
-	}
+        oslice = sf_floatalloc3(sf_n(ath), sf_n(ara), sf_n(aph));
+        po = sf_floatalloc3(nrapad, nthpad, nphpad);
     
     }
     
@@ -395,9 +388,9 @@ int main(int argc, char*argv[]) {
 	cudaMemcpy(d_Sjra, cs->jx, 1 * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_Sjph, cs->jy, 1 * sizeof(int), cudaMemcpyHostToDevice);
 	sf_check_gpu_error("copy source coords to device");
-    sf_warning("source index ra: %i", cs->jx);
-    sf_warning("source index th: %i", cs->jz);
-    sf_warning("source index ph: %i", cs->jy);
+    sf_warning("source index ra: %d", cs->jx);
+    sf_warning("source index th: %d", cs->jz);
+    sf_warning("source index ph: %d", cs->jy);
 
 	// SET RECEIVERS ON THE GPU
 	sf_warning("Receiver Count: %d", nr);
@@ -438,7 +431,6 @@ int main(int argc, char*argv[]) {
 
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
-
 	    // INJECT STRESS SOURCE
 	    dim3 dimGrid2(ceil(nrapad/8.0f),ceil(nphpad/8.0f),ceil(nthpad/8.0f));
 	    dim3 dimBlock2(8,8,8);
@@ -451,26 +443,26 @@ int main(int argc, char*argv[]) {
 
 	    // APPLY WAVE EQUATION
 	    solve<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
-			    		  d_vel,
-					  dra, dph, dth, ora, oph, oth, dt,
-					  nrapad, nphpad, nthpad);
+                d_vel,
+                dra, dph, dth, ora, oph, oth, dt,
+                nrapad, nphpad, nthpad);
 	    sf_check_gpu_error("solve Kernel");
 
 	    // SHIFT PRESSURE FIELDS IN TIME
 	    shift<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
-					   nrapad, nphpad, nthpad);
+                nrapad, nphpad, nthpad);
 	    sf_check_gpu_error("shift Kernel");
 
 	    // ONE WAY BC
 	    onewayBC<<<dimGrid2,dimBlock2>>>(d_po, d_ppo,
-                                             d_bthl, d_bthh, d_bral, d_brah, d_bphl, d_bphh,
-                                             nrapad, nphpad, nthpad);
+                d_bthl, d_bthh, d_bral, d_brah, d_bphl, d_bphh,
+                nrapad, nphpad, nthpad);
 
 	    // SPONGE
 	    spongeKernel<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
-	    sf_check_gpu_error("sponge Kernel");
+	    sf_check_gpu_error("sponge Kernel1");
 	    spongeKernel<<<dimGrid2, dimBlock2>>>(d_ppo, nrapad, nphpad, nthpad, nb);
-            sf_check_gpu_error("sponge Kernel");
+        sf_check_gpu_error("sponge Kernel2");
 
 	    // FREE SURFACE
 	    freeSurf<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
@@ -480,31 +472,32 @@ int main(int argc, char*argv[]) {
 	    dim3 dimGridE(MIN(nr, ceil(nr/1024.0f)), 1, 1);
 	    dim3 dimBlockE(MIN(nr, 1024), 1, 1);
 	    lint3d_extract_gpu<<<dimGridE, dimBlockE>>>(d_dd_pp, it, nr,
-							nrapad, nphpad, nthpad, 
-						    	d_po, d_Rjra, d_Rjph, d_Rjth,
-							d_Rw000, d_Rw001, d_Rw010, d_Rw011,
-							d_Rw100, d_Rw101, d_Rw110, d_Rw111);
-    	    sf_check_gpu_error("lint3d_extract_gpu Kernel");
+                nrapad, nphpad, nthpad, 
+                d_po, d_Rjra, d_Rjph, d_Rjth,
+                d_Rw000, d_Rw001, d_Rw010, d_Rw011,
+                d_Rw100, d_Rw101, d_Rw110, d_Rw111);
+        sf_check_gpu_error("lint3d_extract_gpu Kernel");
 
 	    // EXTRACT WAVEFIELD EVERY JSNAP STEPS
 	    if (snap && it % jsnap == 0) {
 
-		cudaMemcpy(h_po, d_po, nrapad * nphpad * nthpad * sizeof(float), cudaMemcpyDefault);
+            cudaMemcpy(h_po, d_po, nrapad * nphpad * nthpad * sizeof(float), cudaMemcpyDefault);
 
-		for (int ra = 0; ra < nrapad; ra++) {
-		    for (int th = 0; th < nthpad; th++) {
-			for (int ph = 0; ph < nphpad; ph++) {
-			    po[ph][ra][th] = h_po[ph*nthpad*nrapad + th*nrapad + ra];
-			}
-		    } 
-		}
-		
-		if (bnds) {
-                    sf_floatwrite(po[0][0], nthpad*nrapad*nphpad, Fwfl);
-		} else {
-		    cut3d(po, oslice, fdm, ath, ara, aph);
-		    sf_floatwrite(oslice[0][0], sf_n(ath)*sf_n(ara)*sf_n(aph), Fwfl);
-		}
+            for (int ra = 0; ra < nrapad; ra++) {
+                for (int th = 0; th < nthpad; th++) {
+                    for (int ph = 0; ph < nphpad; ph++) {
+                        po[ph][th][ra] = h_po[ph*nthpad*nrapad + th*nrapad + ra];
+                    }
+                } 
+            }
+
+            if (bnds) {
+                sf_floatwrite(po[0][0], nthpad*nrapad*nphpad, Fwfl);
+            } else {
+                cut3d(po, oslice, fdm, ath, ara, aph);
+                sf_floatwrite(oslice[0][0], sf_n(ath)*sf_n(ara)*sf_n(aph), Fwfl);
+            }
+            
 	    }	    
 
 	}
@@ -512,18 +505,6 @@ int main(int argc, char*argv[]) {
     }
 
     fprintf(stderr,"\n");
-/*
-    cudaMemcpy(h_vel, d_po, nthpad*nphpad*nrapad*sizeof(float), cudaMemcpyDefault);
-   
-    sf_setn(ara, nrapad);
-    sf_setn(ath, nthpad);
-    sf_setn(aph, nphpad); 
-    sf_oaxa(Fdat, ara, 1);
-    sf_oaxa(Fdat, ath, 3);
-    sf_oaxa(Fdat, aph, 2);
-
-    sf_floatwrite(h_vel, nthpad*nphpad*nrapad*sizeof(float), Fdat);
-*/
 
     cudaMemcpy(h_dd_pp, d_dd_pp, nsmp*nr*sizeof(float), cudaMemcpyDefault);
 
