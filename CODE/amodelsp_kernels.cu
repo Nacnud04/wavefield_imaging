@@ -128,7 +128,7 @@ __global__ void inject_single_source(float *d_uu, float *d_ww,
 __global__ void solve(float *d_fpo, float *d_po, float *d_ppo, float *d_vel,
 		      float dra, float dph, float dth, float ora, float oph, float oth, 
 		      float dt,
-		      int nrapad, int nthpad, int nphpad) {
+		      int nrapad, int nphpad, int nthpad) {
 
 	int ira = threadIdx.x + blockIdx.x * blockDim.x;
 	int iph = threadIdx.y + blockIdx.y * blockDim.y;

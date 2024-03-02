@@ -127,6 +127,7 @@ int main(int argc, char*argv[]) {
 
     // x, y, z pad to nrapad, nthpad, nphpad
     int nrapad=fdm->nxpad; int nthpad=fdm->nzpad; int nphpad=fdm->nypad;
+    sf_warning("nrapad: %d | nthpad: %d | nphpad: %d", nrapad, nthpad, nphpad);
     h_vel = (float*)malloc(nrapad * nthpad * nphpad * sizeof(float));
 
     // define bell size
@@ -171,31 +172,6 @@ int main(int argc, char*argv[]) {
         sf_oaxa(Fwfl, awt, 4);
 
     }
-    
-    // create gaussian bell
-    if (nbell * 2 + 1 > 32) {sf_error("nbell must be <= 15\n");}
-    float *h_bell, *d_bell;
-    h_bell = (float*)malloc((2*nbell+1)*(2*nbell+1)*(2*nbell+1)*sizeof(float));
-    float s = 0.5 * nbell;
-
-    // iterate over bell space and create bell
-    // since this is in spherical we need to find the distance delta in the x y and z directions to make a proper gaussian.
-    // however if we don't do this there will be a gaussian distorted in cartesian space, but it will conform to the shape of a sphere nicely. this is also simpler so for now I will do this
-    
-    // iterate over bell space
-    for (ira=-nbell;ira<=nbell;ira++) {
-        for (ith=-nbell;ith<=nbell;ith++) {
-                for (iph=-nbell;iph<=nbell;iph++) {
-            h_bell[(iph+nbell)*(2*nbell+1)*(2*nbell+1) + (ith+nbell)*(2*nbell+1) + (ira+nbell)] = exp(-(iph*iph+ith*ith+ira*ira)/s);
-            }
-        }
-    }
-
-    sf_warning("gauss bell 1d size: %d with dims: x:%d, y:%d, z:%d", (nbell*2) * (2*nbell+1) * (2*nbell+1) + (nbell*2) * (2*nbell+1) + (nbell*2), nbell*2+1, nbell*2+1, nbell*2+1);
-    cudaMalloc((void**)&d_bell, (2*nbell+1)*(2*nbell+1)*(2*nbell+1)*sizeof(float));
-    sf_check_gpu_error("cudaMalloc d_bell");
-    cudaMemcpy(d_bell, h_bell, (2*nbell+1)*(2*nbell+1)*(2*nbell+1)*sizeof(float), cudaMemcpyHostToDevice);
-    sf_check_gpu_error("copy d_bell to device");
 
     // MOVE SOURCE WAVELET INTO THE GPU
     ncs = 1;
@@ -261,7 +237,6 @@ int main(int argc, char*argv[]) {
     // allocate memory to import velocity data
     float *tt1 = (float*)malloc(nra * nth * nph * sizeof(float));
 
-
     // expand dimensions to allow for absorbing boundary conditions
     sf_warning("Expanding dimensions to allocate for bound. conditions");
     sf_warning("nrapad: %d | nthpad: %d | nphpad: %d", nrapad, nthpad, nphpad);
@@ -289,7 +264,7 @@ int main(int argc, char*argv[]) {
     
     if (snap) {
 
-        oslice = sf_floatalloc3(sf_n(ath), sf_n(ara), sf_n(aph));
+        oslice = sf_floatalloc3(sf_n(ara), sf_n(ath), sf_n(aph));
         po = sf_floatalloc3(nrapad, nthpad, nphpad);
     
     }
@@ -482,7 +457,7 @@ int main(int argc, char*argv[]) {
 	    if (snap && it % jsnap == 0) {
 
             cudaMemcpy(h_po, d_po, nrapad * nphpad * nthpad * sizeof(float), cudaMemcpyDefault);
-
+/*
             for (int ra = 0; ra < nrapad; ra++) {
                 for (int th = 0; th < nthpad; th++) {
                     for (int ph = 0; ph < nphpad; ph++) {
@@ -490,9 +465,9 @@ int main(int argc, char*argv[]) {
                     }
                 } 
             }
-
+*/
             if (bnds) {
-                sf_floatwrite(po[0][0], nthpad*nrapad*nphpad, Fwfl);
+                sf_floatwrite(h_po, nthpad*nrapad*nphpad, Fwfl);
             } else {
                 cut3d(po, oslice, fdm, ath, ara, aph);
                 sf_floatwrite(oslice[0][0], sf_n(ath)*sf_n(ara)*sf_n(aph), Fwfl);
