@@ -363,13 +363,20 @@ int main(int argc, char*argv[]) {
 	cudaMemcpy(d_Sjra, cs->jx, 1 * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_Sjph, cs->jy, 1 * sizeof(int), cudaMemcpyHostToDevice);
 	sf_check_gpu_error("copy source coords to device");
-    sf_warning("source index ra: %d", cs->jx);
-    sf_warning("source index th: %d", cs->jz);
-    sf_warning("source index ph: %d", cs->jy);
+    sf_warning("source index ra: %d", cs->jx[0]);
+    sf_warning("source index th: %d", cs->jz[0]);
+    sf_warning("source index ph: %d", cs->jy[0]);
 
 	// SET RECEIVERS ON THE GPU
 	sf_warning("Receiver Count: %d", nr);
 	cr = lint3d_make(nr, rr, fdm);
+
+    sf_warning("Receiver 0 z: %lf", rr[0].z);
+    sf_warning("Receiver 0 x: %lf", rr[0].x);
+    sf_warning("Receiver 0 y: %lf", rr[0].y);
+    sf_warning("Receiver %d z: %lf", nr-1, rr[nr-1].z);
+    sf_warning("Receiver %d x: %lf", nr-1, rr[nr-1].x);
+    sf_warning("Receiver %d y: %lf", nr-1, rr[nr-1].y);
 
 	cudaMemcpy(d_Rw000, cr->w000, nr * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_Rw001, cr->w001, nr * sizeof(float), cudaMemcpyHostToDevice);
@@ -384,6 +391,10 @@ int main(int argc, char*argv[]) {
     cudaMemcpy(d_Rjth, cr->jz, nr * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_Rjra, cr->jx, nr * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_Rjph, cr->jy, nr * sizeof(int), cudaMemcpyHostToDevice);
+    sf_warning("receiver 1 loc ra: %d", cs->jx[0]);
+    sf_warning("receiver 1 loc th: %d", cs->jz[0]);
+    sf_warning("receiver 1 loc ph: %d", cs->jy[0]);
+    sf_warning("receiver 1 weights 000:%f | 001:%f | 010:%f | 011:%f | 100:%f | 101:%f | 110:%f | 111:%f", cr->w000[0], cr->w001[0], cr->w010[0], cr->w011[0], cr->w100[0], cr->w101[0], cr->w101[0], cr->w111[0]);
     sf_check_gpu_error("copy receiver coords to device");
 
 
@@ -457,15 +468,7 @@ int main(int argc, char*argv[]) {
 	    if (snap && it % jsnap == 0) {
 
             cudaMemcpy(h_po, d_po, nrapad * nphpad * nthpad * sizeof(float), cudaMemcpyDefault);
-/*
-            for (int ra = 0; ra < nrapad; ra++) {
-                for (int th = 0; th < nthpad; th++) {
-                    for (int ph = 0; ph < nphpad; ph++) {
-                        po[ph][th][ra] = h_po[ph*nthpad*nrapad + th*nrapad + ra];
-                    }
-                } 
-            }
-*/
+
             if (bnds) {
                 sf_floatwrite(h_po, nthpad*nrapad*nphpad, Fwfl);
             } else {
