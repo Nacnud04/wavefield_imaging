@@ -122,6 +122,51 @@ __global__ void inject_single_source(float *d_uu, float *d_ww,
 }
 
 
+__global__ void inject_sources(float *d_po, float *d_ww, 
+		float *d_Sw000, float *d_Sw001, float *d_Sw010, float *d_Sw011, 
+		float *d_Sw100, float *d_Sw101, float *d_Sw110, float *d_Sw111, 
+		int *d_Sjx, int *d_Sjy, int *d_Sjz, 
+		int it, int ns,
+		int nxpad, int nypad, int nzpad) {
+
+        int ss = threadIdx.x + blockIdx.x * blockDim.x;
+
+        float wa = d_ww[it];
+
+        if (ss < ns) {
+/*
+                int s_x = d_jx[ss];
+                int s_y = d_jy[ss];
+                int s_z = d_jz[ss];
+
+                int xz = nxpad * nzpad;
+
+                d_uu[s_y*xz + s_z*nxpad         + s_x  ] = wa * d_Sw000[ss];
+                d_uu[s_y*xz + (s_z+1)*nxpad     + s_x  ] = wa * d_Sw001[ss];
+                d_uu[s_y*xz + s_z*nxpad         + s_x+1] = wa * d_Sw010[ss];
+                d_uu[s_y*xz + (s_z+1)*nxpad     + s_x+1] = wa * d_Sw011[ss];
+                d_uu[(s_y+1)*xz + s_z*nxpad     + s_x  ] = wa * d_Sw100[ss];
+                d_uu[(s_y+1)*xz + (s_z+1)*nxpad + s_x  ] = wa * d_Sw101[ss];
+                d_uu[(s_y+1)*xz + s_z*nxpad     + s_x+1] = wa * d_Sw110[ss];
+                d_uu[(s_y+1)*xz + (s_z+1)*nxpad + s_x+1] = wa * d_Sw111[ss];*/
+
+                int y_comp = d_Sjy[ss] * nxpad * nzpad;
+		int y_comp_1 = (d_Sjy[ss]+1) * nxpad * nzpad;
+		int z_comp = d_Sjz[ss] * nxpad;
+		int z_comp_1 = (d_Sjz[ss]+1) * nxpad;
+
+		d_po[y_comp   + z_comp   + (d_Sjx[ss])]   = wa * d_Sw000[ss];
+                d_po[y_comp   + z_comp_1 + d_Sjx[ss]]     = wa * d_Sw001[ss];
+                d_po[y_comp   + z_comp   + (d_Sjx[ss]+1)] = wa * d_Sw010[ss];
+                d_po[y_comp   + z_comp_1 + (d_Sjx[ss]+1)] = wa * d_Sw011[ss];
+                d_po[y_comp_1 + z_comp   + (d_Sjx[ss])]   = wa * d_Sw100[ss];
+                d_po[y_comp_1 + z_comp_1 + d_Sjx[ss]]     = wa * d_Sw101[ss];
+                d_po[y_comp_1 + z_comp   + (d_Sjx[ss]+1)] = wa * d_Sw110[ss];
+                d_po[y_comp_1 + z_comp_1 + (d_Sjx[ss]+1)] = wa * d_Sw111[ss];
+        }
+}
+
+
 // divergence 3d for cpml
 #define NOP 4 // half of the order in space
 
@@ -246,6 +291,7 @@ __global__ void lint3d_extract_gpu(float *d_dd_pp,
 	int offset = it * nr;
 
 	if (rr < nr){
+
 		int y_comp = d_Rjy[rr] * nxpad * nzpad;
 		int y_comp_1 = (d_Rjy[rr]+1) * nxpad * nzpad;
 		int z_comp = d_Rjz[rr] * nxpad;
