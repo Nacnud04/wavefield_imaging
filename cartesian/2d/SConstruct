@@ -1,6 +1,9 @@
 from rsf.proj import *
 import sys, os
 
+sys.path.append('/home/byrne/WORK/CODE')
+import byrne_awe as awe
+
 import math, fdmod, encode, wemig, stiffness
 
 pi = 3.14159
@@ -38,7 +41,7 @@ xsou = par['ox']+3*(par['nx']-1)*par['dx']/4.
 zsou = par['oz']+(par['nz']-1)*par['dz']/2.
 
 # gen point source
-fdmod.point('ss-2d', xsou, zsou, par)
+#fdmod.point('ss-2d', xsou, zsou, par)
 
 # gen receiver arxy
 receiver_par = par
@@ -57,7 +60,8 @@ rec_z = par['ox'] + par['nx'] * par['dx']
 
 fdmod.horizontal('rr-2d', rec_z, par)
 
-# run elastic model
+"""
+# run acoustic model
 Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-2d', 'rr-2d'], '''
     ~/WORK/CODE/sfAWEFDcart2d
     jdata=%(jdata)d dabc=%(dabc)s free=%(free)s
@@ -66,6 +70,8 @@ Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-2d', 'rr-2d'], '''
     vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
     wfl=${TARGETS[1]}
     ''' % par)
+"""
+awe.awefd2d('dat', 'wfl', None,  'vp', None, 'ss-2d', 'rr-2d', '', par)
 
 Result('dat', 'window | transp | grey')
 
