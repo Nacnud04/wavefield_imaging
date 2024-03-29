@@ -2,6 +2,9 @@ from rsf.proj import *
 import polar_util as putil
 import sys, os
 
+sys.path.append('/home/byrne/WORK/CODE')
+import byrne_awe as awe
+
 # compile project
 proj = Project()
 
@@ -78,9 +81,6 @@ par['vp'] = 2
 Flow('vp',None,'''spike nsp=1 mag=%(vp)g n1=%(nra)d o1=%(ora)g d1=%(dra)g n2=%(nth)d o2=%(oth)g d2=%(dth)g |
         put label1=%(lra)s label2=%(lth)s unit1=%(ura)s unit2=%(uth)s''' % par)
 
-# make wavelet
-fdmod.wavelet('wav',par['frq'],par)
-
 # gen source pos
 rasou = 10.09#par['ora']+3*(par['nra']-1)*par['dra']/4.
 thsou = par['oth']+(par['nth']-1)*par['dth']/2.
@@ -105,15 +105,7 @@ rec_z = par['ora'] + par['nra'] * par['dra']
 
 putil.horizontal('rr-2d', rec_z, receiver_par)
 
-# run elastic model
-Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-2d', 'rr-2d'], '''
-    ~/WORK/CODE/sfAWEFDpolar
-    jdata=%(jdata)d dabc=%(dabc)s free=%(free)s
-    snap=%(snap)s bnds=%(bnds)s jsnap=%(jsnap)d
-    nb=%(nb)d nbell=%(nbell)d nc=%(nc)d gpu=%(gpu)d
-    vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
-    wfl=${TARGETS[1]}
-    ''' % par)
+awe.spawefd2d('dat', 'wfl', None,  'vp', None, 'ss-2d', 'rr-2d', '', par)
 
 Result('dat', 'window | transp | grey')
 

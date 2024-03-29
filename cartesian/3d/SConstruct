@@ -1,6 +1,9 @@
 from rsf.proj import * # set up generic proj files
 import sys, os # import madagascar path
 
+sys.path.append('/home/byrne/WORK/CODE')
+import byrne_awe as awe
+
 # import modules
 import math, fdmod, encode, wemig, stiffness
 
@@ -19,7 +22,7 @@ par = {
     # model params
     'snap':'y','bnds':'y','jsnap':50,'height':6,
     'nb':32,'nbell':5,'jdata':1,'dabc':'y',
-    'free':'n','ssou':'y', 'nc':1, 'gpu':0,
+    'free':'n','ssou':'y', 'nc':1, 'gpu':1,
 }
 
 # initalize params in fdm module
@@ -35,18 +38,6 @@ par['ro'] = 2000
 Flow('vp',None,'''spike nsp=1 mag=%(vp)g n1=%(nx)d o1=%(ox)g d1=%(dx)g n2=%(nz)d o2=%(oz)g d2=%(dz)g n3=%(ny)d o3=%(oy)g d3=%(dy)g | 
                   put label1=%(lx)s label2=%(lz)s label3=%(ly)s unit1=%(ux)s unit2=%(uz)s unit3=%(uy)s''' % par)
 
-# create a wavelet
-Flow('wav',None,
-         '''
-         spike nsp=1 mag=1 n1=%(nt)d d1=%(dt)g o1=%(ot)g k1=%(kt)d |
-         pad end1=%(nt)d |
-         ricker1 frequency=%(frq)g |
-         window n1=%(nt)d |
-         scale axis=123 | 
-         put label1=t
-         ''' % par)
-
-#fdmod.wavelet('wav',par['frq'],par)
 
 # generate source position
 zsou=par['oz']+(par['nz']-1)*par['dz']/4.
@@ -59,16 +50,8 @@ fdmod.point3d('ss-3d', xsou, ysou, zsou, par)
 # gen receiver array
 fdmod.horizontal3d('rr-3d', 0, par)
 
-# run elastic model
-
-Flow(['dat', 'wfl'], ['wav', 'vp', 'ss-3d', 'rr-3d'], '''
-    ~/WORK/CODE/sfAWEFDcart3d 
-    jdata=%(jdata)d free=%(free)s 
-    jsnap=%(jsnap)d ssou=%(ssou)s
-    dabc=%(dabc)s snap=%(snap)s bnds=%(bnds)s
-    nb=%(nb)d nbell=%(nbell)d nc=%(nc)d gpu=%(gpu)d
-    vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]} wfl=${TARGETS[1]}
-    ''' % par)
+# run acoustic model
+awe.awefd3d('dat', 'wfl', None,  'vp', None, 'ss-3d', 'rr-3d', '', par)
 
 Result('dat', f'window n1={par["nx"]} f1=160000 | transp | grey')
 
