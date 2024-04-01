@@ -478,8 +478,10 @@ int main(int argc, char*argv[]) {
         sf_check_gpu_error("sponge Kernel2");
 
 	    // FREE SURFACE
-	    freeSurf<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
-	    sf_check_gpu_error("free surface Kernel");
+        if (fsrf) {
+            freeSurf<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
+            sf_check_gpu_error("free surface Kernel");
+        }
 		
 	    // RECEIVERS
 	    dim3 dimGridR(MIN(nr, ceil(nr/1024.0f)), 1, 1);

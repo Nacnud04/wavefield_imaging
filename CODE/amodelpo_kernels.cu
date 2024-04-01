@@ -41,13 +41,38 @@ __global__ void lint2d_bell_gpu(float *d_uu, float *d_ww, float *d_Sw00, float *
 
         float wa = d_ww[it * nc * ns + c * ns + ia] * d_bell[(iz * (2*nbell+1)) + ix];
 
-	int z_comp = (d_jz[ia] - nbell) + iz;
-	int x_comp = (d_jx[ia] - nbell) + ix;
+		int z_comp = (d_jz[ia] - nbell) + iz;
+		int x_comp = (d_jx[ia] - nbell) + ix;
 
         atomicAdd(&d_uu[(z_comp)     * nxpad + (x_comp    )], ((wa * d_Sw00[ia])));
         atomicAdd(&d_uu[(z_comp + 1) * nxpad + (x_comp    )], ((wa * d_Sw01[ia])));
         atomicAdd(&d_uu[(z_comp)     * nxpad + (x_comp + 1)], ((wa * d_Sw10[ia])));
         atomicAdd(&d_uu[(z_comp + 1) * nxpad + (x_comp + 1)], ((wa * d_Sw11[ia])));
+
+}
+
+
+__global__ void inject_sources(float *d_po, float *d_ww,
+							   float *d_Sw00, float *d_Sw01, float *d_Sw10, float *d_Sw11,
+							   int *d_Sjx, int *d_Sjz,
+							   int it, int ns,
+							   int nxpad, int nzpad) {
+
+	int ss = threadIdx.x + blockIdx.x * blockDim.x;
+
+	float wa = d_ww[it];
+
+	if (ss < ns) {
+
+		int s_x = d_Sjx[ss];
+		int s_z = d_Sjz[ss];
+
+		d_po[ s_z      * nxpad + s_x    ] += wa * d_Sw00[ss];
+		d_po[(s_z + 1) * nxpad + s_x    ] += wa * d_Sw01[ss];
+		d_po[ s_z      * nxpad + s_x + 1] += wa * d_Sw10[ss];
+		d_po[(s_z + 1) * nxpad + s_x + 1] += wa * d_Sw11[ss];
+
+	}
 
 }
 

@@ -328,15 +328,15 @@ int main(int argc, char*argv[]) {
 	cs = lint2d_make(1, ss, fdm);
 
 	sf_warning("Source interp coeffs:");
-        sf_warning("00:%f | 01:%f | 10:%f | 11:%f", cs->w00[0], cs->w01[0], cs->w10[0], cs->w11[0]);
+    sf_warning("00:%f | 01:%f | 10:%f | 11:%f", cs->w00[0], cs->w01[0], cs->w10[0], cs->w11[0]);
 
-        cudaMemcpy(d_Sw00, cs->w00, 1 * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_Sw01, cs->w01, 1 * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_Sw10, cs->w10, 1 * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_Sw11, cs->w11, 1 * sizeof(float), cudaMemcpyHostToDevice);
-        sf_check_gpu_error("copy source interpolation coefficients to device");
+    cudaMemcpy(d_Sw00, cs->w00, 1 * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Sw01, cs->w01, 1 * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Sw10, cs->w10, 1 * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Sw11, cs->w11, 1 * sizeof(float), cudaMemcpyHostToDevice);
+    sf_check_gpu_error("copy source interpolation coefficients to device");
 
-        cudaMemcpy(d_Sjth, cs->jz, 1 * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Sjth, cs->jz, 1 * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_Sjra, cs->jx, 1 * sizeof(int), cudaMemcpyHostToDevice);
 	sf_check_gpu_error("copy source coords to device");
 
@@ -346,14 +346,14 @@ int main(int argc, char*argv[]) {
 	cr = lint2d_make(nr, rr, fdm);
 
 	cudaMemcpy(d_Rw00, cr->w00, nr * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_Rw01, cr->w01, nr * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_Rw10, cr->w10, nr * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_Rw11, cr->w11, nr * sizeof(float), cudaMemcpyHostToDevice);
-        sf_check_gpu_error("copy receiver interpolation coefficients to device");
+    cudaMemcpy(d_Rw01, cr->w01, nr * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Rw10, cr->w10, nr * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Rw11, cr->w11, nr * sizeof(float), cudaMemcpyHostToDevice);
+    sf_check_gpu_error("copy receiver interpolation coefficients to device");
 
-        cudaMemcpy(d_Rjth, cr->jz, nr * sizeof(int), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_Rjra, cr->jx, nr * sizeof(int), cudaMemcpyHostToDevice);
-        sf_check_gpu_error("copy receiver coords to device");
+    cudaMemcpy(d_Rjth, cr->jz, nr * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Rjra, cr->jx, nr * sizeof(int), cudaMemcpyHostToDevice);
+    sf_check_gpu_error("copy receiver coords to device");
 
 
 	// set pressure to 0 on gpu
@@ -407,8 +407,10 @@ int main(int argc, char*argv[]) {
             sf_check_gpu_error("sponge Kernel");
 
 	    // FREE SURFACE
-	    freeSurf<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nthpad, nb);
-	    sf_check_gpu_error("freeSurf Kernel");
+        if (fsrf) {
+            freeSurf<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nthpad, nb);
+            sf_check_gpu_error("freeSurf Kernel");
+        }
 
 	    if (snap && it%jsnap==0) {
 
