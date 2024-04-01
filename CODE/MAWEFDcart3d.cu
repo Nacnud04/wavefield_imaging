@@ -62,7 +62,7 @@ int main(int argc, char*argv[]) {
     // exec flags
     if(! sf_getbool("verb",&verb)) verb=false; /* verbosity flag */
     if(! sf_getbool("snap",&snap)) snap=false; /* wavefield snapshots flag */
-    if(! sf_getbool("bnds",&bnds)) bnds=false;
+    if(! sf_getbool("bnds",&bnds)) bnds=false; /* extract boundries of wavefield flag*/
     if(! sf_getbool("free",&fsrf)) fsrf=false; /* free surface flag */
     if(! sf_getbool("ssou",&ssou)) ssou=false; /* stress source */
     if(! sf_getbool("dabc",&dabc)) dabc=false; /* absorbing BC */

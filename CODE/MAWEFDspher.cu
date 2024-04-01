@@ -339,15 +339,15 @@ int main(int argc, char*argv[]) {
 	//printpt3d(*ss);
 
     sf_warning("Source 1 z: %lf", ss[0].z);
-    sf_warning("Source %d z: %lf", ns-1, rr[ns-1].z);
+    sf_warning("Source %d z: %lf", ns-1, ss[ns-1].z);
     sf_warning("Min >=: %f", fdm->ozpad); 
 	sf_warning("Max < : %f", fdm->ozpad + (fdm->nzpad-1)*fdm->dz);
     sf_warning("Source 1 x: %lf", ss[0].x);
-    sf_warning("Source %d x: %lf", ns-1, rr[ns-1].x);
+    sf_warning("Source %d x: %lf", ns-1, ss[ns-1].x);
     sf_warning("Min >=: %f", fdm->oxpad); 
 	sf_warning("Max < : %f", fdm->oxpad + (fdm->nxpad-1)*fdm->dx);
     sf_warning("Source 1 y: %lf", ss[0].y);
-    sf_warning("Source %d y: %lf", ns-1, rr[ns-1].y);
+    sf_warning("Source %d y: %lf", ns-1, ss[ns-1].y);
     sf_warning("Min >=: %f", fdm->oypad); 
 	sf_warning("Max < : %f", fdm->oypad + (fdm->nypad-1)*fdm->dy);
 

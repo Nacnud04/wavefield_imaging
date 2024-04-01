@@ -134,35 +134,22 @@ __global__ void inject_sources(float *d_po, float *d_ww,
         float wa = d_ww[it];
 
         if (ss < ns) {
-/*
-                int s_x = d_jx[ss];
-                int s_y = d_jy[ss];
-                int s_z = d_jz[ss];
+
+                int s_x = d_Sjx[ss];
+                int s_y = d_Sjy[ss];
+                int s_z = d_Sjz[ss];
 
                 int xz = nxpad * nzpad;
 
-                d_uu[s_y*xz + s_z*nxpad         + s_x  ] = wa * d_Sw000[ss];
-                d_uu[s_y*xz + (s_z+1)*nxpad     + s_x  ] = wa * d_Sw001[ss];
-                d_uu[s_y*xz + s_z*nxpad         + s_x+1] = wa * d_Sw010[ss];
-                d_uu[s_y*xz + (s_z+1)*nxpad     + s_x+1] = wa * d_Sw011[ss];
-                d_uu[(s_y+1)*xz + s_z*nxpad     + s_x  ] = wa * d_Sw100[ss];
-                d_uu[(s_y+1)*xz + (s_z+1)*nxpad + s_x  ] = wa * d_Sw101[ss];
-                d_uu[(s_y+1)*xz + s_z*nxpad     + s_x+1] = wa * d_Sw110[ss];
-                d_uu[(s_y+1)*xz + (s_z+1)*nxpad + s_x+1] = wa * d_Sw111[ss];*/
+                d_po[s_y*xz + s_z*nxpad         + s_x  ] += wa * d_Sw000[ss];
+                d_po[s_y*xz + (s_z+1)*nxpad     + s_x  ] += wa * d_Sw001[ss];
+                d_po[s_y*xz + s_z*nxpad         + s_x+1] += wa * d_Sw010[ss];
+                d_po[s_y*xz + (s_z+1)*nxpad     + s_x+1] += wa * d_Sw011[ss];
+                d_po[(s_y+1)*xz + s_z*nxpad     + s_x  ] += wa * d_Sw100[ss];
+                d_po[(s_y+1)*xz + (s_z+1)*nxpad + s_x  ] += wa * d_Sw101[ss];
+                d_po[(s_y+1)*xz + s_z*nxpad     + s_x+1] += wa * d_Sw110[ss];
+                d_po[(s_y+1)*xz + (s_z+1)*nxpad + s_x+1] += wa * d_Sw111[ss];
 
-                int y_comp = d_Sjy[ss] * nxpad * nzpad;
-		int y_comp_1 = (d_Sjy[ss]+1) * nxpad * nzpad;
-		int z_comp = d_Sjz[ss] * nxpad;
-		int z_comp_1 = (d_Sjz[ss]+1) * nxpad;
-
-		d_po[y_comp   + z_comp   + (d_Sjx[ss])]   = wa * d_Sw000[ss];
-                d_po[y_comp   + z_comp_1 + d_Sjx[ss]]     = wa * d_Sw001[ss];
-                d_po[y_comp   + z_comp   + (d_Sjx[ss]+1)] = wa * d_Sw010[ss];
-                d_po[y_comp   + z_comp_1 + (d_Sjx[ss]+1)] = wa * d_Sw011[ss];
-                d_po[y_comp_1 + z_comp   + (d_Sjx[ss])]   = wa * d_Sw100[ss];
-                d_po[y_comp_1 + z_comp_1 + d_Sjx[ss]]     = wa * d_Sw101[ss];
-                d_po[y_comp_1 + z_comp   + (d_Sjx[ss]+1)] = wa * d_Sw110[ss];
-                d_po[y_comp_1 + z_comp_1 + (d_Sjx[ss]+1)] = wa * d_Sw111[ss];
         }
 }
 
