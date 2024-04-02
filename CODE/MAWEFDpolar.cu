@@ -58,8 +58,6 @@ int main(int argc, char*argv[]) {
     // linear interpolation of weights and indicies
     lint2d cs, cr;
 
-    int nbell; // gaussian bell dims
-
     sf_init(argc, argv);
 
     // exec flags
@@ -91,14 +89,15 @@ int main(int argc, char*argv[]) {
 
     as  = sf_iaxa(Fsou,2); sf_setlabel(as ,"s" ); // sources
     ar  = sf_iaxa(Frec,2); sf_setlabel(ar ,"r" ); // receivers
-    sf_axis ar_3;
+    sf_axis ar_3, as_3;
     ar_3 = sf_iaxa(Frec, 3);
+    as_3 = sf_iaxa(Fsou, 3);
 
     nt  = sf_n(at ); dt  = sf_d(at );
     nra = sf_n(ara); dra = sf_d(ara);
     nth = sf_n(ath); dth = sf_d(ath);
     
-    ns  = sf_n(as);
+    ns  = sf_n(as_3) * sf_n(as);
     nr  = sf_n(ar_3) * sf_n(ar);
 
     ora = sf_o(ara); oth = sf_o(ath); ot = sf_o(at);
@@ -159,29 +158,6 @@ int main(int argc, char*argv[]) {
     sf_warning("Adjusted Origins: oth %f, ora %f", fdm->ozpad, fdm->oxpad);
     oth = fdm->ozpad; ora = fdm->oxpad;
 
-    // create gaussian bell
-    if (nbell * 2 + 1 > 32) {sf_error("nbell must be <= 15\n");}
-    float *h_bell, *d_bell;
-    h_bell = (float*)malloc((2*nbell+1)*(2*nbell+1)*(2*nbell+1)*sizeof(float));
-    float s = 0.5 * nbell;
-
-    // iterate over bell space and create bell
-    // since this is in spherical we need to find the distance delta in the x y and z directions to make a proper gaussian.
-    // however if we don't do this there will be a gaussian distorted in cartesian space, but it will conform to the shape of a sphere nicely. this is also simpler so for now I will do this
-    
-    // iterate over bell space
-    for (ira=-nbell;ira<=nbell;ira++) {
-	for (ith=-nbell;ith<=nbell;ith++) {
-	    h_bell[(ith+nbell)*(2*nbell+1) + (ira+nbell)] = exp(-(ith*ith+ira*ira)/s);
-	}
-    }
-
-    sf_warning("gauss bell 1d size: %d with dims: x:%d, z:%d", (nbell*2) * (2*nbell+1) + (nbell*2), nbell*2+1, nbell*2+1);
-    cudaMalloc((void**)&d_bell, (2*nbell+1)*(2*nbell+1)*sizeof(float));
-    sf_check_gpu_error("cudaMalloc d_bell");
-    cudaMemcpy(d_bell, h_bell, (2*nbell+1)*(2*nbell+1)*sizeof(float), cudaMemcpyHostToDevice);
-    sf_check_gpu_error("copy d_bell to device");
-
     // MOVE SOURCE WAVELET INTO THE GPU
     ncs = 1;
     float **ww = NULL;
@@ -204,7 +180,7 @@ int main(int argc, char*argv[]) {
     pt2d *ss=NULL;
     pt2d *rr=NULL;
 
-    ss = (pt2d*) sf_alloc(1, sizeof(*ss));
+    ss = (pt2d*) sf_alloc(ns, sizeof(*ss));
     rr = (pt2d*) sf_alloc(nr, sizeof(*rr));
 
     float *d_Sw00, *d_Sw01, *d_Sw10, *d_Sw11;
@@ -316,8 +292,7 @@ int main(int argc, char*argv[]) {
 	// in the pt struct there is X and Z. The same convention is
 	// used here to transform into spherical coordinates (X:Radius,
 	// Z:Theta)
-	pt2dread1(Fsou, ss, 1 , 2);
-	sf_warning("test1");
+	pt2dread1(Fsou, ss, ns , 2);
 	pt2dread1(Frec, rr, nr, 2);
 
 	// set source on GPU
@@ -325,7 +300,7 @@ int main(int argc, char*argv[]) {
 	printpt2d(*ss);
 
 	// perform 3d linear interpolation on source
-	cs = lint2d_make(1, ss, fdm);
+	cs = lint2d_make(ns, ss, fdm);
 
 	sf_warning("Source interp coeffs:");
     sf_warning("00:%f | 01:%f | 10:%f | 11:%f", cs->w00[0], cs->w01[0], cs->w10[0], cs->w11[0]);
@@ -372,14 +347,16 @@ int main(int argc, char*argv[]) {
 	// TIME LOOP
 	fprintf(stderr,"total num of time steps: %d \n", nt);
 	for (it=0; it<nt; it++) {
+
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
 	    // INJECT PRESSURE SOURCE
-	    dim3 dimGrid1(ns, 1);
-	    dim3 dimBlock1(2*nbell+1, 2*nbell+1);
-	    lint2d_bell_gpu<<<dimGrid1, dimBlock1>>>(d_po, d_ww, d_Sw00, d_Sw01, d_Sw10, d_Sw11, 
-			                             d_bell, d_Sjra, d_Sjth, it, ncs, 1, 0, nbell, nrapad);
-	    sf_check_gpu_error("lint3d_bell_gpu Kernel"); 
+        dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1);
+        dim3 dimBlockS(MIN(ns, 1024), 1);
+        inject_sources<<<dimGridS,dimBlockS>>>(d_po, d_ww, 
+                       d_Sw00, d_Sw01, d_Sw10, d_Sw11,
+                       d_Sjra, d_Sjth, it, ns, nrapad, nthpad);
+        sf_check_gpu_error("inject sources Kernel");
 
 	    // APPLY WAVE EQUATION
 	    dim3 dimGrid2(ceil(nrapad/8.0f),ceil(nthpad/8.0f));
