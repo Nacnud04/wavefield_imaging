@@ -184,16 +184,16 @@ int main(int argc, char*argv[]) {
     rr = (pt2d*) sf_alloc(nr, sizeof(*rr));
 
     float *d_Sw00, *d_Sw01, *d_Sw10, *d_Sw11;
-    cudaMalloc((void**)&d_Sw00, 1 * sizeof(float));
-    cudaMalloc((void**)&d_Sw01, 1 * sizeof(float));
-    cudaMalloc((void**)&d_Sw10, 1 * sizeof(float));
-    cudaMalloc((void**)&d_Sw11, 1 * sizeof(float));
+    cudaMalloc((void**)&d_Sw00, ns * sizeof(float));
+    cudaMalloc((void**)&d_Sw01, ns * sizeof(float));
+    cudaMalloc((void**)&d_Sw10, ns * sizeof(float));
+    cudaMalloc((void**)&d_Sw11, ns * sizeof(float));
     sf_check_gpu_error("cudaMalloc source interpolation coefficients to device");
 
     // radal and theta, phi coordinates of each source
     int *d_Sjra, *d_Sjth;
-    cudaMalloc((void**)&d_Sjra, 1 * sizeof(int));
-    cudaMalloc((void**)&d_Sjth, 1 * sizeof(int));
+    cudaMalloc((void**)&d_Sjra, ns * sizeof(int));
+    cudaMalloc((void**)&d_Sjth, ns * sizeof(int));
     sf_check_gpu_error("cudaMalloc source coords to device");
 
     float *d_Rw00, *d_Rw01, *d_Rw10, *d_Rw11;
@@ -248,8 +248,8 @@ int main(int argc, char*argv[]) {
 
     if (bnds){
         sf_setn(acth, nthpad);
-	sf_setn(acra, nrapad);
-	sf_oaxa(Fwfl,acth,1);
+        sf_setn(acra, nrapad);
+        sf_oaxa(Fwfl,acth,1);
         sf_oaxa(Fwfl,acra,2);
     }
 
@@ -284,7 +284,7 @@ int main(int argc, char*argv[]) {
     cudaMemcpy(d_brah, one_brah, nthpad*sizeof(float), cudaMemcpyHostToDevice);
 
     // ITERATE OVER SHOTS
-    for (int isrc = 0; isrc < ns; isrc ++) {
+    for (int isrc = 0; isrc < 1; isrc ++) {
 
 	sf_warning("Modeling shot %d", isrc+1);
 
@@ -305,14 +305,14 @@ int main(int argc, char*argv[]) {
 	sf_warning("Source interp coeffs:");
     sf_warning("00:%f | 01:%f | 10:%f | 11:%f", cs->w00[0], cs->w01[0], cs->w10[0], cs->w11[0]);
 
-    cudaMemcpy(d_Sw00, cs->w00, 1 * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_Sw01, cs->w01, 1 * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_Sw10, cs->w10, 1 * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_Sw11, cs->w11, 1 * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Sw00, cs->w00, ns * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Sw01, cs->w01, ns * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Sw10, cs->w10, ns * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Sw11, cs->w11, ns * sizeof(float), cudaMemcpyHostToDevice);
     sf_check_gpu_error("copy source interpolation coefficients to device");
 
-    cudaMemcpy(d_Sjth, cs->jz, 1 * sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_Sjra, cs->jx, 1 * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Sjth, cs->jz, ns * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_Sjra, cs->jx, ns * sizeof(int), cudaMemcpyHostToDevice);
 	sf_check_gpu_error("copy source coords to device");
 
 

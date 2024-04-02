@@ -433,7 +433,7 @@ int main(int argc, char*argv[]) {
 
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
-	    // INJECT STRESS SOURCE
+	    // INJECT PRESSURE SOURCE
         
         dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1, 1);
 	    dim3 dimBlockS(MIN(ns, 1024), 1, 1);
@@ -446,14 +446,7 @@ int main(int argc, char*argv[]) {
 
 	    dim3 dimGrid2(ceil(nrapad/8.0f),ceil(nphpad/8.0f),ceil(nthpad/8.0f));
 	    dim3 dimBlock2(8,8,8);
-        /*
-	    inject_single_source<<<dimGrid2, dimBlock2>>>(d_po, d_ww, 
-			    d_Sw000, d_Sw001, d_Sw010, d_Sw011, 
-			    d_Sw100, d_Sw101, d_Sw110, d_Sw111, 
-			    d_Sjra, d_Sjph, d_Sjth, 
-			    it, nrapad, nphpad, nthpad);
-	    sf_check_gpu_error("inject_single_source Kernel"); 
-        */
+        
 	    // APPLY WAVE EQUATION
 	    solve<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
                 d_vel,

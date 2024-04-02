@@ -44,8 +44,9 @@ zsou=par['oz']+(par['nz']-1)*par['dz']/4.
 xsou=par['ox']+(par['nx']-1)*par['dx']/2.
 ysou=par['oy']+(par['ny']-1)*par['dy']/2.
 
-# gen point source
-fdmod.point3d('ss-3d', xsou, ysou, zsou, par)
+# gen source
+#fdmod.point3d('ss-3d', xsou, ysou, zsou, par)
+fdmod.horizontal3d('ss-3d', 0.05, par)
 
 # gen receiver array
 fdmod.horizontal3d('rr-3d', 0, par)

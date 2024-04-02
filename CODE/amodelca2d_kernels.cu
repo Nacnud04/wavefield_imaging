@@ -52,6 +52,31 @@ __global__ void lint2d_bell_gpu(float *d_uu, float *d_ww, float *d_Sw00, float *
 }
 
 
+__global__ void inject_sources(float *d_po, float *d_ww,
+							   float *d_Sw00, float *d_Sw01, float *d_Sw10, float *d_Sw11,
+							   int *d_Sjx, int *d_Sjz,
+							   int it, int ns,
+							   int nxpad, int nzpad) {
+
+	int ss = threadIdx.x + blockIdx.x * blockDim.x;
+
+	float wa = d_ww[it];
+
+	if (ss < ns) {
+
+		int s_x = d_Sjx[ss];
+		int s_z = d_Sjz[ss];
+
+		d_po[ s_z      * nxpad + s_x    ] += wa * d_Sw00[ss];
+		d_po[(s_z + 1) * nxpad + s_x    ] += wa * d_Sw01[ss];
+		d_po[ s_z      * nxpad + s_x + 1] += wa * d_Sw10[ss];
+		d_po[(s_z + 1) * nxpad + s_x + 1] += wa * d_Sw11[ss];
+
+	}
+
+}
+
+
 // divergence 3d for cpml
 #define NOP 4 // half of the order in space
 

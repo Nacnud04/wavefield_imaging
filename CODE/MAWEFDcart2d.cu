@@ -91,14 +91,15 @@ int main(int argc, char*argv[]) {
 
     as  = sf_iaxa(Fsou,2); sf_setlabel(as ,"s" ); // sources
     ar  = sf_iaxa(Frec,2); sf_setlabel(ar ,"r" ); // receivers
-    sf_axis ar_3;
+    sf_axis ar_3, as_3;
     ar_3 = sf_iaxa(Frec, 3);
+    as_3 = sf_iaxa(Fsou, 3);
 
     nt  = sf_n(at ); dt  = sf_d(at );
     nx = sf_n(ax); dx = sf_d(ax);
     nz = sf_n(az); dz = sf_d(az);
     
-    ns  = sf_n(as);
+    ns  = sf_n(as_3) * sf_n(as);
     nr  = sf_n(ar_3) * sf_n(ar);
 
     ox = sf_o(ax); oz = sf_o(az); ot = sf_o(at);
@@ -202,20 +203,20 @@ int main(int argc, char*argv[]) {
     pt2d *ss=NULL;
     pt2d *rr=NULL;
 
-    ss = (pt2d*) sf_alloc(1, sizeof(*ss));
+    ss = (pt2d*) sf_alloc(ns, sizeof(*ss));
     rr = (pt2d*) sf_alloc(nr, sizeof(*rr));
 
     float *d_Sw00, *d_Sw01, *d_Sw10, *d_Sw11;
-    cudaMalloc((void**)&d_Sw00, 1 * sizeof(float));
-    cudaMalloc((void**)&d_Sw01, 1 * sizeof(float));
-    cudaMalloc((void**)&d_Sw10, 1 * sizeof(float));
-    cudaMalloc((void**)&d_Sw11, 1 * sizeof(float));
+    cudaMalloc((void**)&d_Sw00, ns * sizeof(float));
+    cudaMalloc((void**)&d_Sw01, ns * sizeof(float));
+    cudaMalloc((void**)&d_Sw10, ns * sizeof(float));
+    cudaMalloc((void**)&d_Sw11, ns * sizeof(float));
     sf_check_gpu_error("cudaMalloc source interpolation coefficients to device");
 
     // xdal and zeta, phi coordinates of each source
     int *d_Sjx, *d_Sjz;
-    cudaMalloc((void**)&d_Sjx, 1 * sizeof(int));
-    cudaMalloc((void**)&d_Sjz, 1 * sizeof(int));
+    cudaMalloc((void**)&d_Sjx, ns * sizeof(int));
+    cudaMalloc((void**)&d_Sjz, ns * sizeof(int));
     sf_check_gpu_error("cudaMalloc source coords to device");
 
     float *d_Rw00, *d_Rw01, *d_Rw10, *d_Rw11;
@@ -270,8 +271,8 @@ int main(int argc, char*argv[]) {
 
     if (bnds){
         sf_setn(acz, nzpad);
-	sf_setn(acx, nxpad);
-	sf_oaxa(Fwfl,acz,1);
+        sf_setn(acx, nxpad);
+        sf_oaxa(Fwfl,acz,1);
         sf_oaxa(Fwfl,acx,2);
     }
 
@@ -306,7 +307,7 @@ int main(int argc, char*argv[]) {
     cudaMemcpy(d_bxh, one_bxh, nzpad*sizeof(float), cudaMemcpyHostToDevice);
 
     // ITERATE OVER SHOTS
-    for (int isrc = 0; isrc < ns; isrc ++) {
+    for (int isrc = 0; isrc < 1; isrc ++) {
 
 	sf_warning("Modeling shot %d", isrc+1);
 
@@ -314,8 +315,7 @@ int main(int argc, char*argv[]) {
 	// in ze pt struct zere is X and Z. The same convention is
 	// used here to txnsform into spherical coordinates (X:Radius,
 	// Z:Theta)
-	pt2dread1(Fsou, ss, 1 , 2);
-	sf_warning("test1");
+	pt2dread1(Fsou, ss, ns, 2);
 	pt2dread1(Frec, rr, nr, 2);
 
 	// set source on GPU
@@ -323,19 +323,19 @@ int main(int argc, char*argv[]) {
 	printpt2d(*ss);
 
 	// perform 3d linear interpolation on source
-	cs = lint2d_make(1, ss, fdm);
+	cs = lint2d_make(ns, ss, fdm);
 
 	sf_warning("Source interp coeffs:");
-        sf_warning("00:%f | 01:%f | 10:%f | 11:%f", cs->w00[0], cs->w01[0], cs->w10[0], cs->w11[0]);
+    sf_warning("00:%f | 01:%f | 10:%f | 11:%f", cs->w00[0], cs->w01[0], cs->w10[0], cs->w11[0]);
 
-        cudaMemcpy(d_Sw00, cs->w00, 1 * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_Sw01, cs->w01, 1 * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_Sw10, cs->w10, 1 * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_Sw11, cs->w11, 1 * sizeof(float), cudaMemcpyHostToDevice);
-        sf_check_gpu_error("copy source interpolation coefficients to device");
+    cudaMemcpy(d_Sw00, cs->w00, ns * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Sw01, cs->w01, ns * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Sw10, cs->w10, ns * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Sw11, cs->w11, ns * sizeof(float), cudaMemcpyHostToDevice);
+    sf_check_gpu_error("copy source interpolation coefficients to device");
 
-        cudaMemcpy(d_Sjz, cs->jz, 1 * sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_Sjx, cs->jx, 1 * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Sjz, cs->jz, ns * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_Sjx, cs->jx, ns * sizeof(int), cudaMemcpyHostToDevice);
 	sf_check_gpu_error("copy source coords to device");
 
 
@@ -344,14 +344,14 @@ int main(int argc, char*argv[]) {
 	cr = lint2d_make(nr, rr, fdm);
 
 	cudaMemcpy(d_Rw00, cr->w00, nr * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_Rw01, cr->w01, nr * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_Rw10, cr->w10, nr * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_Rw11, cr->w11, nr * sizeof(float), cudaMemcpyHostToDevice);
-        sf_check_gpu_error("copy receiver interpolation coefficients to device");
+    cudaMemcpy(d_Rw01, cr->w01, nr * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Rw10, cr->w10, nr * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Rw11, cr->w11, nr * sizeof(float), cudaMemcpyHostToDevice);
+    sf_check_gpu_error("copy receiver interpolation coefficients to device");
 
-        cudaMemcpy(d_Rjz, cr->jz, nr * sizeof(int), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_Rjx, cr->jx, nr * sizeof(int), cudaMemcpyHostToDevice);
-        sf_check_gpu_error("copy receiver coords to device");
+    cudaMemcpy(d_Rjz, cr->jz, nr * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Rjx, cr->jx, nr * sizeof(int), cudaMemcpyHostToDevice);
+    sf_check_gpu_error("copy receiver coords to device");
 
 
 	// set pressure to 0 on gpu
@@ -369,15 +369,24 @@ int main(int argc, char*argv[]) {
 
 	// TIME LOOP
 	fprintf(stderr,"total num of time steps: %d \n", nt);
+
 	for (it=0; it<nt; it++) {
+
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
 	    // INJECT PRESSURE SOURCE
-	    dim3 dimGrid1(ns, 1);
+	    /*dim3 dimGrid1(ns, 1);
 	    dim3 dimBlock1(2*nbell+1, 2*nbell+1);
 	    lint2d_bell_gpu<<<dimGrid1, dimBlock1>>>(d_po, d_ww, d_Sw00, d_Sw01, d_Sw10, d_Sw11, 
 			                             d_bell, d_Sjx, d_Sjz, it, ncs, 1, 0, nbell, nxpad);
-	    sf_check_gpu_error("lint3d_bell_gpu Kernel"); 
+	    sf_check_gpu_error("lint3d_bell_gpu Kernel"); */
+
+        dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1);
+        dim3 dimBlockS(MIN(ns, 1024), 1);
+        inject_sources<<<dimGridS,dimBlockS>>>(d_po, d_ww, 
+                       d_Sw00, d_Sw01, d_Sw10, d_Sw11,
+                       d_Sjx, d_Sjz, it, ns, fdm->nxpad, fdm->nzpad);
+        sf_check_gpu_error("inject sources Kernel");
 
 	    // APPLY WAVE EQUATION
 	    dim3 dimGrid2(ceil(nxpad/8.0f),ceil(nzpad/8.0f));
