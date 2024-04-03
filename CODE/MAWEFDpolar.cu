@@ -83,7 +83,7 @@ int main(int argc, char*argv[]) {
     cudaSetDevice(gpu);
 
     // set up axis
-    at  = sf_iaxa(Fwav,1); sf_setlabel(at ,"t" ); // time
+    at  = sf_iaxa(Fwav,2); sf_setlabel(at ,"t" ); // time
     ara = sf_iaxa(Fvel,1); sf_setlabel(ara,"ra"); // radius
     ath = sf_iaxa(Fvel,2); sf_setlabel(ath,"th"); // theta
 
@@ -106,12 +106,6 @@ int main(int argc, char*argv[]) {
     sf_warning("dra:%f|dth:%f|dt:%f", dra, dth, dt);
     sf_warning("ora:%f|oth:%f|ot:%f", ora, oth, ot);
 
-    
-    // define bell size
-    if(! sf_getint("nbell",&nbell)) nbell=5;  //bell size
-    sf_warning("nbell=%d",nbell);
-
-    
     // how often to extract receiver data?
     if(! sf_getint("jdata",&jdata)) jdata=1;
     sf_warning("extracting recevier data every %d times", jdata);
@@ -160,17 +154,16 @@ int main(int argc, char*argv[]) {
 
     // MOVE SOURCE WAVELET INTO THE GPU
     ncs = 1;
-    float **ww = NULL;
-    ww = sf_floatalloc2(ncs, nt); // allocate var for ncs dims over nt time
-    sf_floatread(ww[0], nt*ncs*1, Fwav); // read wavelet into allocated mem
+    float *ww = NULL;
+    ww = sf_floatalloc(1); // allocate var for ncs dims over nt time
+    sf_floatread(ww, 1, Fwav); // read wavelet into allocated mem
 
     float *h_ww;
-    h_ww = (float*)malloc(1*ncs*nt*sizeof(float));
-    for (int t=0; t<nt; t++) {
-	for (int c=0; c<ncs; c++){
-	    h_ww[t*ncs+c] = ww[t][c];
-	}
+    h_ww = (float*)malloc(1 * ncs * nt*sizeof(float));
+    for (int t = 0; t < nt; t++) { 
+        h_ww[t] = ww[t];
     }
+
     float *d_ww;
     cudaMalloc((void**)&d_ww, 1*ncs*nt*sizeof(float));
     sf_check_gpu_error("cudaMalloc source wavelet to device");

@@ -84,7 +84,7 @@ int main(int argc, char*argv[]) {
     cudaSetDevice(gpu);
 
     // set up axis
-    at = sf_iaxa(Fwav,1); sf_setlabel(at,"t"); if(verb) sf_raxa(at); //time
+    at = sf_iaxa(Fwav,2); sf_setlabel(at,"t"); if(verb) sf_raxa(at); //time
     az = sf_iaxa(Fvel,2); sf_setlabel(az,"z"); if(verb) sf_raxa(az); //depth
     ay = sf_iaxa(Fvel,3); sf_setlabel(ay,"y"); if(verb) sf_raxa(ay); //y
     ax = sf_iaxa(Fvel,1); sf_setlabel(ax,"x"); if(verb) sf_raxa(ax); //x
@@ -122,7 +122,7 @@ int main(int argc, char*argv[]) {
         sf_warning("extracting recevier data every %d timesteps", jsnap);
         
 	acz = sf_maxa(nz, sf_o(az), dz);
-        acx = sf_maxa(nx, sf_o(ax), dx);
+    acx = sf_maxa(nx, sf_o(ax), dx);
 	acy = sf_maxa(ny, sf_o(ay), dy);
 
 	int ntsnap;
@@ -156,41 +156,19 @@ int main(int argc, char*argv[]) {
     fdm=fdutil3d_init(verb,fsrf,az,ax,ay,nb,1);
     sf_warning("ox %f, oy %f, oz %f", fdm->oxpad, fdm->oypad, fdm->ozpad);
 
-    // CREATE GAUSSIAN BELL
-    if (nbell * 2 + 1 > 32) {sf_error("nbell must be <= 15\n");}
-    float *h_bell, *d_bell;
-    h_bell = (float*)malloc((2*nbell+1)*(2*nbell+1)*(2*nbell+1)*sizeof(float));
-    float s = 0.5*nbell;
-    
-    // iterate over bell space
-    for (ix=-nbell;ix<=nbell;ix++) {
-        for (iy=-nbell;iy<=nbell;iy++) {
-            for (iz=-nbell;iz<=nbell;iz++) {
-                h_bell[(iy + nbell) * (2*nbell+1) * (2*nbell+1) + (iz + nbell) * (2*nbell+1) + (ix + nbell)] = exp(-(iy*iy+iz*iz+ix*ix)/s);
-            }
-        }
-    }
-    
-    sf_warning("gauss bell 1d size: %d with dims: x:%d, y:%d, z:%d", (nbell*2) * (2*nbell+1) * (2*nbell+1) + (nbell*2) * (2*nbell+1) + (nbell*2), nbell*2+1, nbell*2+1, nbell*2+1);
-    cudaMalloc((void**)&d_bell, (2*nbell+1)*(2*nbell+1)*(2*nbell+1)*sizeof(float));
-    sf_check_gpu_error("cudaMalloc d_bell");
-    cudaMemcpy(d_bell, h_bell, (2*nbell+1)*(2*nbell+1)*(2*nbell+1)*sizeof(float), cudaMemcpyHostToDevice);
-    sf_check_gpu_error("copy d_bell to device");
-
     // MOVE SOURCE WAVELET INTO GPU
     // for this we basically have to compute the weights of the wavelet to make it correct when on the grid
     ncs = 1;
-    float ***ww=NULL;
-    ww = sf_floatalloc3(1, ncs, nt); // allocate variable for ncs dimensions over nt time
-    sf_floatread(ww[0][0],nt*ncs*1,Fwav); // read the wavelet into the allocated memory
+    float *ww=NULL;
+    ww = sf_floatalloc(1); // allocate variable for ncs dimensions over nt time
+    sf_floatread(ww, 1, Fwav); // read the wavelet into the allocated memory
 
     float *h_ww;
-    h_ww = (float*)malloc(1*ncs*nt*sizeof(float));
-    for (int t=0; t<nt; t++){
-	for (int c=0; c<ncs; c++){
-	    h_ww[t * ncs + c] = ww[t][c][0];
-	}
+    h_ww = (float*)malloc(nt*sizeof(float));
+    for (int t = 0; t < nt; t++) {
+        h_ww[t] = ww[t];
     }
+
     float *d_ww;
     cudaMalloc((void**)&d_ww, 1*ncs*nt*sizeof(float));
     sf_check_gpu_error("cudaMalloc source wavelet to device");
@@ -464,7 +442,7 @@ int main(int argc, char*argv[]) {
 		dim3 dimGrid_extract(MIN(nr, ceil(nr/1024.0f)), 1, 1);
 		dim3 dimBlock_extract(MIN(nr, 1024), 1, 1);
 		lint3d_extract_gpu<<<dimGrid_extract, dimBlock_extract>>>(d_dd_pp, 
-				                                          itr, nr, fdm->nxpad, fdm->nypad, fdm->nzpad,
+                                        itr, nr, fdm->nxpad, fdm->nypad, fdm->nzpad,
 									  d_po, d_Rjx, d_Rjy, d_Rjz,
 									  d_Rw000, d_Rw001, d_Rw010, d_Rw011,
 									  d_Rw100, d_Rw101, d_Rw110, d_Rw111);
@@ -503,7 +481,7 @@ int main(int argc, char*argv[]) {
 	sf_oaxa(Fdat, at, 2);
 	sf_oaxa(Fdat, ar, 1);
 
-	sf_floatwrite(h_dd_pp, nsmp*nr*sizeof(float), Fdat);
+	sf_floatwrite(h_dd_pp, nsmp*nr, Fdat);
         
     }
 }

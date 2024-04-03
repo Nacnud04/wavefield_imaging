@@ -44,15 +44,17 @@ zsou=par['oz']+(par['nz']-1)*par['dz']/4.
 xsou=par['ox']+(par['nx']-1)*par['dx']/2.
 ysou=par['oy']+(par['ny']-1)*par['dy']/2.
 
-# gen source
-#fdmod.point3d('ss-3d', xsou, ysou, zsou, par)
+# gen sources
 fdmod.horizontal3d('ss-3d', 0.05, par)
 
 # gen receiver array
 fdmod.horizontal3d('rr-3d', 0, par)
 
+# gen wavelet
+awe.wavelet('wav', par['frq'], '', par)
+
 # run acoustic model
-awe.awefd3d('dat', 'wfl', None,  'vp', None, 'ss-3d', 'rr-3d', '', par)
+awe.awefd3d('dat', 'wfl', 'wav',  'vp', None, 'ss-3d', 'rr-3d', '', par)
 
 Result('dat', f'window n1={par["nx"]} f1=160000 | transp | grey')
 

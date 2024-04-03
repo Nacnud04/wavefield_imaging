@@ -34,11 +34,7 @@ Flow('vp',None,'''spike nsp=1 mag=%(vp)g n1=%(nx)d o1=%(ox)g d1=%(dx)g n2=%(nz)d
         put label1=%(lx)s label2=%(lz)s unit1=%(ux)s unit2=%(uz)s''' % par)
 
 # make wavelet
-awe.wavelet('wav',par['frq'],'',par)
-
-# gen source pos
-#xsou = par['ox']+3*(par['nx']-1)*par['dx']/4.
-#zsou = par['oz']+(par['nz']-1)*par['dz']/2.
+awe.wavelet('wav',par['frq'], '', par)
 
 # gen receiver arxy
 receiver_par = par

@@ -163,18 +163,12 @@ int main(int argc, char*argv[]) {
     float *ww = NULL;
     ww = sf_floatalloc(1); // allocate var for ncs dims over nt time
     sf_floatread(ww, 1, Fwav); // read wavelet into allocated mem
-/*
-    float *h_ww;
-    h_ww = (float*)malloc(1*ncs*nt*sizeof(float));
-    for (int t=0; t<nt; t++) {
-	for (int c=0; c<ncs; c++){
-	    h_ww[t*ncs+c] = ww[t][0];
-	}
-    }*/
 
     float *h_ww;
     h_ww = (float*)malloc(nt*sizeof(float));
-    h_ww = ww;
+    for (int t = 0; t < nt; t++) {
+        h_ww[t] = ww[t];
+    }
 
     float *d_ww;
     cudaMalloc((void**)&d_ww, 1*ncs*nt*sizeof(float));
