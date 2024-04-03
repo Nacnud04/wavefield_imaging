@@ -85,7 +85,7 @@ int main(int argc, char*argv[]) {
     cudaSetDevice(gpu);
 
     // set up axis
-    at  = sf_iaxa(Fwav,1); sf_setlabel(at ,"t" ); // time
+    at  = sf_iaxa(Fwav,2); sf_setlabel(at ,"t" ); // time
     ax = sf_iaxa(Fvel,1); sf_setlabel(ax,"x"); // xdius
     az = sf_iaxa(Fvel,2); sf_setlabel(az,"z"); // zeta
 
@@ -158,42 +158,24 @@ int main(int argc, char*argv[]) {
     sf_warning("Adjusted Origins: oz %f, ox %f", fdm->ozpad, fdm->oxpad);
     oz = fdm->ozpad; ox = fdm->oxpad;
 
-    // create gaussian bell
-    if (nbell * 2 + 1 > 32) {sf_error("nbell must be <= 15\n");}
-    float *h_bell, *d_bell;
-    h_bell = (float*)malloc((2*nbell+1)*(2*nbell+1)*(2*nbell+1)*sizeof(float));
-    float s = 0.5 * nbell;
-
-    // itexte over bell space and create bell
-    // since zis is in spherical we need to find ze distance delta in ze x y and z directions to make a proper gaussian.
-    // however if we don't do zis zere will be a gaussian distorted in cartesian space, but it will conform to ze shape of a sphere nicely. zis is also simpler so for now I will do zis
-    
-    // itexte over bell space
-    for (ix=-nbell;ix<=nbell;ix++) {
-	for (iz=-nbell;iz<=nbell;iz++) {
-	    h_bell[(iz+nbell)*(2*nbell+1) + (ix+nbell)] = exp(-(iz*iz+ix*ix)/s);
-	}
-    }
-
-    sf_warning("gauss bell 1d size: %d wiz dims: x:%d, z:%d", (nbell*2) * (2*nbell+1) + (nbell*2), nbell*2+1, nbell*2+1);
-    cudaMalloc((void**)&d_bell, (2*nbell+1)*(2*nbell+1)*sizeof(float));
-    sf_check_gpu_error("cudaMalloc d_bell");
-    cudaMemcpy(d_bell, h_bell, (2*nbell+1)*(2*nbell+1)*sizeof(float), cudaMemcpyHostToDevice);
-    sf_check_gpu_error("copy d_bell to device");
-
     // MOVE SOURCE WAVELET INTO THE GPU
     ncs = 1;
-    float **ww = NULL;
-    ww = sf_floatalloc2(ncs, nt); // allocate var for ncs dims over nt time
-    sf_floatread(ww[0], nt*ncs*1, Fwav); // read wavelet into allocated mem
-
+    float *ww = NULL;
+    ww = sf_floatalloc(1); // allocate var for ncs dims over nt time
+    sf_floatread(ww, 1, Fwav); // read wavelet into allocated mem
+/*
     float *h_ww;
     h_ww = (float*)malloc(1*ncs*nt*sizeof(float));
     for (int t=0; t<nt; t++) {
 	for (int c=0; c<ncs; c++){
-	    h_ww[t*ncs+c] = ww[t][c];
+	    h_ww[t*ncs+c] = ww[t][0];
 	}
-    }
+    }*/
+
+    float *h_ww;
+    h_ww = (float*)malloc(nt*sizeof(float));
+    h_ww = ww;
+
     float *d_ww;
     cudaMalloc((void**)&d_ww, 1*ncs*nt*sizeof(float));
     sf_check_gpu_error("cudaMalloc source wavelet to device");
@@ -419,21 +401,21 @@ int main(int argc, char*argv[]) {
 
 	    if (snap && it%jsnap==0) {
 
-		cudaMemcpy(h_po, d_po, nxpad*nzpad*sizeof(float), cudaMemcpyDefault);
+            cudaMemcpy(h_po, d_po, nxpad*nzpad*sizeof(float), cudaMemcpyDefault);
 
-		for (int x = 0; x < nxpad; x++) {
-		    for (int z = 0; z < nzpad; z++) {
-			po[x][z] = h_po[z*nxpad + x];
-		    }
-		}	
+            for (int x = 0; x < nxpad; x++) {
+                for (int z = 0; z < nzpad; z++) {
+                po[x][z] = h_po[z*nxpad + x];
+                }
+            }	
 
-		if (bnds) {
-		    sf_floatwrite(po[0], nzpad*nxpad, Fwfl);
-		}
-		else {
-	            cut2d(po, oslice, fdm, az, ax);
-		    sf_floatwrite(oslice[0], sf_n(az)*sf_n(ax), Fwfl);
-		}
+            if (bnds) {
+                sf_floatwrite(po[0], nzpad*nxpad, Fwfl);
+            }
+            else {
+                cut2d(po, oslice, fdm, az, ax);
+                sf_floatwrite(oslice[0], sf_n(az)*sf_n(ax), Fwfl);
+            }
 	    }
 	    
 	    // EXTRACT TO RECEIVERS
@@ -452,7 +434,7 @@ int main(int argc, char*argv[]) {
 
     fprintf(stderr,"\n");
 
-  /*  
+  
     cudaMemcpy(h_dd_pp, d_dd_pp, nsmp*nr*sizeof(float), cudaMemcpyDefault);
 
     sf_setn(ar, nr);
@@ -463,19 +445,7 @@ int main(int argc, char*argv[]) {
     sf_oaxa(Fdat, ar, 1);
 
     sf_floatwrite(h_dd_pp, nsmp*nr*sizeof(float), Fdat);    
-    */
-
-    // UNCOMMENT TO EXTRACT WAVEFIELD AT FINAL TIMESTEP
-
-    cudaMemcpy(h_vel, d_po, nzpad*nxpad*sizeof(float), cudaMemcpyDefault);
-   
-    sf_setn(ax, nxpad);
-    sf_setn(az, nzpad);
-    sf_oaxa(Fdat, ax, 1);
-    sf_oaxa(Fdat, az, 2);
-
-    sf_floatwrite(h_vel, nzpad*nxpad, Fdat);
-
+    
     // FREE ALLOCATED MEMORY
     cudaFree(d_ww);
 

@@ -34,7 +34,7 @@ Flow('vp',None,'''spike nsp=1 mag=%(vp)g n1=%(nx)d o1=%(ox)g d1=%(dx)g n2=%(nz)d
         put label1=%(lx)s label2=%(lz)s unit1=%(ux)s unit2=%(uz)s''' % par)
 
 # make wavelet
-fdmod.wavelet('wav',par['frq'],par)
+awe.wavelet('wav',par['frq'],'',par)
 
 # gen source pos
 #xsou = par['ox']+3*(par['nx']-1)*par['dx']/4.
@@ -59,7 +59,7 @@ fdmod.horizontal('rr-2d', rec_z, par)
 
 fdmod.horizontal('ss-2d', 0.04, par)
 
-awe.awefd2d('dat', 'wfl', None,  'vp', None, 'ss-2d', 'rr-2d', '', par)
+awe.awefd2d('dat', 'wfl', 'wav',  'vp', None, 'ss-2d', 'rr-2d', '', par)
 
 Result('dat', 'window | transp | grey')
 
