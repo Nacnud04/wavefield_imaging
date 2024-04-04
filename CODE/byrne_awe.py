@@ -102,21 +102,6 @@ def awefd3d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
 # -------------------------------------------------------------------
 # Spherical Simulators
 
-def spawefd2dgpu(odat, owfl, idat, velo, dens, sou, rec, custom, par):
-
-    # make wavelet
-    fdmod.wavelet('wav',par['frq'],par)
-
-    # run acoustic model
-    Flow([odat, owfl], ['wav', velo, sou, rec], '''
-        /home/byrne/WORK/CODE/sfAWEFDpolar
-        jdata=%(jdata)d dabc=%(dabc)s free=%(free)s
-        snap=%(snap)s bnds=%(bnds)s jsnap=%(jsnap)d
-        nb=%(nb)d nbell=%(nbell)d nc=%(nc)d gpu=%(gpu)d
-        vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
-        wfl=${TARGETS[1]}
-        ''' % par)
-
 def spawefd2d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
 
     if nGPU > 0: # if gpu's are detected run the gpu code
@@ -127,31 +112,19 @@ def spawefd2d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
             wfl=${TARGETS[1]}
             ''' + ' ' + awepargpu(par) + ' ' + custom)
 
-        #spawefd2dgpu(odat, owfl, idat, velo, dens, sou, rec, custom, par)
-
     # otherwise run the non GPU version
     else:
         raise NotImplementedError("CPU Code for 2d spherical acoustic model does not exist")
 
-def spawefd3dgpu(odat, owfl, idat, velo, dens, sou, rec, custom, par):
-
-    # make wavelet
-    fdmod.wavelet('wav',par['frq'],par)
-
-    # run acoustic model
-    Flow([odat, owfl], ['wav', velo, sou, rec], '''
-        ~/WORK/CODE/sfAWEFDspher
-        jdata=%(jdata)d free=%(free)s
-        dabc=%(dabc)s  snap=%(snap)s bnds=%(bnds)s jsnap=%(jsnap)d
-        nb=%(nb)d nbell=%(nbell)d nc=%(nc)d gpu=%(gpu)d
-        vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
-        wfl=${TARGETS[1]}
-        ''' % par)
-
 def spawefd3d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     
     if nGPU > 0:
-        spawefd3dgpu(odat, owfl, idat, velo, dens, sou, rec, custom, par)
+        
+        Flow([odat, owfl], [idat, velo, sou, rec], '''
+        /home/byrne/WORK/CODE/sfAWEFDspher
+        vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
+        wfl=${TARGETS[1]}
+        ''' + ' ' + awepargpu(par) + ' ' + custom)
 
     else:
         raise NotImplementedError("CPU code for 3d spherical acoustic model does not exist")

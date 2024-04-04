@@ -24,7 +24,7 @@ par = {
     'nth':800,'oth':pi/4.,'dth':0.0000125,'lth':'θ','uth':'rad',
     'nph':800,'oph':pi/4.,'dph':0.0000125,'lph':'φ','uph':'rad',
     # time parameters
-    'kt':100, 'frq':800,
+    'kt':100, 'frq':400,
     'nt':1601, 'ot':0, 'dt':0.000025, 'lt':'t', 'ut':'s',
     # model params
     'snap':'y','bnds':'y','jsnap':100,'height':6,
@@ -76,12 +76,15 @@ rec_z = 10.08
 
 pu.horizontal3d('rr-3d', rec_z, receiver_par)
 
+# generate source wavelet
+awe.wavelet('wav', par['frq'], '', par)
+
 # run acoustic model
-awe.spawefd3d('dat', 'wfl', None,  'vp', None, 'ss-3d', 'rr-3d', '', par)
+awe.spawefd3d('dat', 'wfl', 'wav',  'vp', None, 'ss-3d', 'rr-3d', '', par)
 
 Result('dat', 'window n1=800 f1=320000 | sftransp | sfgrey')
 
 if par['snap'] == 'y':
-    Result('wfl', 'window n3=1 f3=232 | sfgrey gainpanel=a')
+    Result('wfl', 'window n3=1 f3=432 | sfgrey gainpanel=a')
 
 End()
