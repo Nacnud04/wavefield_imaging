@@ -86,8 +86,8 @@ int main(int argc, char*argv[]) {
 
     // set up axis
     at  = sf_iaxa(Fwav,2); sf_setlabel(at ,"t" ); // time
-    ax = sf_iaxa(Fvel,1); sf_setlabel(ax,"x"); // xdius
-    az = sf_iaxa(Fvel,2); sf_setlabel(az,"z"); // zeta
+    ax = sf_iaxa(Fvel,2); sf_setlabel(ax,"x"); // xdius
+    az = sf_iaxa(Fvel,1); sf_setlabel(az,"z"); // zeta
 
     as  = sf_iaxa(Fsou,2); sf_setlabel(as ,"s" ); // sources
     ar  = sf_iaxa(Frec,2); sf_setlabel(ar ,"r" ); // receivers
@@ -107,18 +107,12 @@ int main(int argc, char*argv[]) {
     sf_warning("nx:%d|nz:%d|nt:%d|ns:%d|nr:%d",nx,nz,nt,ns,nr);
     sf_warning("dx:%f|dz:%f|dt:%f", dx, dz, dt);
     sf_warning("ox:%f|oz:%f|ot:%f", ox, oz, ot);
-
-    
-    // define bell size
-    if(! sf_getint("nbell",&nbell)) nbell=5;  //bell size
-    sf_warning("nbell=%d",nbell);
-
     
     // how often to extxct receiver data?
     if(! sf_getint("jdata",&jdata)) jdata=1;
     sf_warning("extxcting recevier data every %d times", jdata);
 
-    // how many time steps in each extxction?
+    // how many time steps in each extraction?
     int nsmp = (nt/jdata);
     sf_warning("therefore zere are %d timesteps between extxction", nsmp);
 
@@ -133,16 +127,16 @@ int main(int argc, char*argv[]) {
 
         if(! sf_getint("jsnap",&jsnap)) jsnap=nt;       // save wavefield every jsnap time steps
 
-	sf_warning("Jsnap: %d", jsnap);
+	    sf_warning("Jsnap: %d", jsnap);
         acz = sf_maxa(nz,oz,dz); 
         acx = sf_maxa(nx,ox,dx); 
     
         int ntsnap = 0;
-	for (it=0; it<nt; it++) {
-	    if (it%jsnap==0) ntsnap++;
-	}
+        for (it=0; it<nt; it++) {
+            if (it%jsnap==0) ntsnap++;
+        }
 
-	sf_setn(at,ntsnap);
+        sf_setn(at,ntsnap);
         sf_setd(at,dt*jsnap);
         
         sf_oaxa(Fwfl,acz,1);
@@ -167,7 +161,8 @@ int main(int argc, char*argv[]) {
     float *h_ww;
     h_ww = (float*)malloc(nt*sizeof(float));
     for (int t = 0; t < nt; t++) {
-        h_ww[t] = ww[t];
+        if (t < 1000){ h_ww[t] = ww[t]; }
+        if (t > 1000){ h_ww[t] = 0; }
     }
 
     float *d_ww;
@@ -221,7 +216,7 @@ int main(int argc, char*argv[]) {
     
     // read in velocity data & expand domain
     sf_floatread(tt1, nx*nz, Fvel);
-    expand_cpu_2d(tt1, h_vel, fdm->nb, nx, nxpad, nz, nzpad);
+    expand_cpu_2d(tt1, h_vel, fdm->nb, nz, nzpad, nx, nxpad);
     cudaMalloc((void **)&d_vel, nzpad*nxpad*sizeof(float));
     sf_check_gpu_error("allocated velocity to device");
     cudaMemcpy(d_vel, h_vel, nzpad*nxpad*sizeof(float), cudaMemcpyHostToDevice);
@@ -351,12 +346,6 @@ int main(int argc, char*argv[]) {
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
 	    // INJECT PRESSURE SOURCE
-	    /*dim3 dimGrid1(ns, 1);
-	    dim3 dimBlock1(2*nbell+1, 2*nbell+1);
-	    lint2d_bell_gpu<<<dimGrid1, dimBlock1>>>(d_po, d_ww, d_Sw00, d_Sw01, d_Sw10, d_Sw11, 
-			                             d_bell, d_Sjx, d_Sjz, it, ncs, 1, 0, nbell, nxpad);
-	    sf_check_gpu_error("lint3d_bell_gpu Kernel"); */
-
         dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1);
         dim3 dimBlockS(MIN(ns, 1024), 1);
         inject_sources<<<dimGridS,dimBlockS>>>(d_po, d_ww, 
@@ -397,16 +386,17 @@ int main(int argc, char*argv[]) {
 
             cudaMemcpy(h_po, d_po, nxpad*nzpad*sizeof(float), cudaMemcpyDefault);
 
-            for (int x = 0; x < nxpad; x++) {
-                for (int z = 0; z < nzpad; z++) {
-                po[x][z] = h_po[z*nxpad + x];
-                }
-            }	
-
             if (bnds) {
-                sf_floatwrite(po[0], nzpad*nxpad, Fwfl);
+                sf_floatwrite(h_po, nzpad*nxpad, Fwfl);
             }
             else {
+
+                for (int x = 0; x < nxpad; x++) {
+                    for (int z = 0; z < nzpad; z++) {
+                        po[x][z] = h_po[z*nxpad + x];
+                    }
+                }
+
                 cut2d(po, oslice, fdm, az, ax);
                 sf_floatwrite(oslice[0], sf_n(az)*sf_n(ax), Fwfl);
             }
@@ -420,7 +410,7 @@ int main(int argc, char*argv[]) {
 			    		     nxpad, nzpad, 
 					     d_po, d_Rjx, d_Rjz,
 					     d_Rw00, d_Rw01, d_Rw10, d_Rw11);
-	    sf_check_gpu_error("extxct Kernel");
+	    sf_check_gpu_error("extract Kernel");
 
 	}
 

@@ -90,6 +90,7 @@ __global__ void solve(float *d_fpo, float *d_po, float *d_ppo, float *d_vel,
         if (ix < nxpad && iz < nzpad){
 
                 int globalAddr = iz * nxpad + ix;
+				int velAddr = ix * nzpad + iz;
                 float pxx, pzz;
                 float laplace;
 
@@ -115,7 +116,7 @@ __global__ void solve(float *d_fpo, float *d_po, float *d_ppo, float *d_vel,
                 }
 
                 // compute pressure at next time step
-                d_fpo[globalAddr] = (dt*dt)*(d_vel[globalAddr]*d_vel[globalAddr]*laplace) + 2*d_po[globalAddr] - d_ppo[globalAddr];
+                d_fpo[globalAddr] = (dt*dt)*(d_vel[velAddr]*d_vel[velAddr]*laplace) + 2*d_po[globalAddr] - d_ppo[globalAddr];
 
         }
 
