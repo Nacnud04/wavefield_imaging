@@ -81,7 +81,7 @@ def awepargpu(par):
           '''
           jdata=%(jdata)d dabc=%(dabc)s free=%(free)s
           snap=%(snap)s bnds=%(bnds)s jsnap=%(jsnap)d
-          nb=%(nb)d gpu=%(gpu)d xz=%(xz)s
+          nb=%(nb)d gpu=%(gpu)d
           '''%par + ' '
     return awe
 

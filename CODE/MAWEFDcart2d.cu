@@ -1,5 +1,6 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+#include <time.h>
 
 extern "C" {
     #include <rsf.h>
@@ -12,6 +13,11 @@ extern "C" {
 #define MIN(x, y) (((x) < (y)) ? (x): (y))
 #define NOP 4
 
+#ifdef _OPENMP
+#include <omp.h>
+#include "omputil.h"
+#endif
+
 // funct to check gpu error
 static void sf_check_gpu_error (const char *msg) {
     cudaError_t err = cudaGetLastError ();
@@ -21,6 +27,9 @@ static void sf_check_gpu_error (const char *msg) {
 
 // entry
 int main(int argc, char*argv[]) {
+
+    // time utilities
+    struct timespec currentTime;
 
     // define input variables from sconstruct
     bool fsrf, snap, bnds, dabc;
@@ -384,6 +393,10 @@ int main(int argc, char*argv[]) {
 
 	    if (snap && it%jsnap==0) {
 
+            clock_gettime(CLOCK_REALTIME, &currentTime);
+            long milliseconds = currentTime.tv_nsec / 1000000;
+            sf_warning("Pre extract time: %ld\n", milliseconds);
+
             cudaMemcpy(h_po, d_po, nxpad*nzpad*sizeof(float), cudaMemcpyDefault);
 
             if (bnds) {
@@ -391,14 +404,29 @@ int main(int argc, char*argv[]) {
             }
             else {
 
+                clock_gettime(CLOCK_REALTIME, &currentTime);
+                milliseconds = currentTime.tv_nsec / 1000000;
+                sf_warning("Pre loop time: %ld\n", milliseconds);
+
+// I did some profiling and I honestly dont think parallelization speeds anything up
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic) private(ix, iz) shared(po, h_po, nxpad)
+#endif
+
                 for (int x = 0; x < nxpad; x++) {
                     for (int z = 0; z < nzpad; z++) {
                         po[x][z] = h_po[z*nxpad + x];
                     }
                 }
 
+                clock_gettime(CLOCK_REALTIME, &currentTime);
+                milliseconds = currentTime.tv_nsec / 1000000;
+                sf_warning("Pre cut time: %ld\n", milliseconds);
+
                 cut2d(po, oslice, fdm, az, ax);
+
                 sf_floatwrite(oslice[0], sf_n(az)*sf_n(ax), Fwfl);
+
             }
 	    }
 	    
