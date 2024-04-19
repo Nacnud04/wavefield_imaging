@@ -156,7 +156,7 @@ def awefd3d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
 
 def spawefd2d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
 
-    if nGPU > 0: # if gpu's are detected run the gpu code
+    if nGPU > 100: # if gpu's are detected run the gpu code
 
         Flow([odat, owfl], [idat, velo, sou, rec], '''
             /home/byrne/WORK/CODE/sfAWEFDpolar
@@ -166,7 +166,13 @@ def spawefd2d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
 
     # otherwise run the non GPU version
     else:
-        raise NotImplementedError("CPU Code for 2d spherical acoustic model does not exist")
+        
+        Flow([odat, owfl], [idat, velo, sou, rec], '''
+            /home/byrne/WORK/CODE/sfAWEFDpolarcpu
+            vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
+            wfl=${TARGETS[1]}
+            ''' + ' ' + awepar(par) + ' ' + custom)
+        #raise NotImplementedError("CPU Code for 2d spherical acoustic model does not exist")
 
 def spawefd3d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     

@@ -20,6 +20,7 @@ targets.c = \
 '''
 AWEFDcart
 AWEFD3D
+AWEFDpolarcpu
 '''
 
 targets.build_all(env, glob_build, rsfroot, bindir, libdir, pkgdir)

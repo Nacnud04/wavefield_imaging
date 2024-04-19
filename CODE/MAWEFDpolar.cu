@@ -115,26 +115,24 @@ int main(int argc, char*argv[]) {
     sf_warning("therefore there are %d timesteps between extraction", nsmp);
 
     if(! sf_getint("jdata",&jdata)) jdata=1;    // extract receiver data every jdata time steps
-   
-     
+
     // define increase in domain of model for boundary conditions
     if( !sf_getint("nb",&nb) || nb<NOP) nb=NOP;
-    
     
     if(snap) {
 
         if(! sf_getint("jsnap",&jsnap)) jsnap=nt;       // save wavefield every jsnap time steps
 
-	sf_warning("Jsnap: %d", jsnap);
+	    sf_warning("Jsnap: %d", jsnap);
         acth = sf_maxa(nth,oth,dth); 
         acra = sf_maxa(nra,ora,dra); 
     
         int ntsnap = 0;
-	for (it=0; it<nt; it++) {
-	    if (it%jsnap==0) ntsnap++;
-	}
+	    for (it=0; it<nt; it++) {
+	        if (it%jsnap==0) ntsnap++;
+	    }
 
-	sf_setn(at,ntsnap);
+	    sf_setn(at,ntsnap);
         sf_setd(at,dt*jsnap);
         
         sf_oaxa(Fwfl,acth,1);
@@ -161,7 +159,8 @@ int main(int argc, char*argv[]) {
     float *h_ww;
     h_ww = (float*)malloc(1 * ncs * nt*sizeof(float));
     for (int t = 0; t < nt; t++) { 
-        h_ww[t] = ww[t];
+        if (t < 0.5 * nt) {h_ww[t] = ww[t];}
+        if (t > 0.5 * nt) {h_ww[t] = 0;}
     }
 
     float *d_ww;
@@ -327,7 +326,7 @@ int main(int argc, char*argv[]) {
 	// set pressure to 0 on gpu
 	cudaMemset(d_ppo, 0, nthpad*nrapad*sizeof(float));
 	cudaMemset(d_po , 0, nthpad*nrapad*sizeof(float));
-	cudaMemset(d_fpo, 0, nthpad*nrapad*sizeof(float));
+	cudaMemset(d_fpo, 0, nthpad*nrapad*sizeof(float));  
 	sf_check_gpu_error("Set pressure arrays to 0");
 
 	// set receiver data to 0
@@ -396,7 +395,7 @@ int main(int argc, char*argv[]) {
 		    sf_floatwrite(po[0], nthpad*nrapad, Fwfl);
 		}
 		else {
-	            cut2d(po, oslice, fdm, ath, ara);
+	        cut2d(po, oslice, fdm, ath, ara);
 		    sf_floatwrite(oslice[0], sf_n(ath)*sf_n(ara), Fwfl);
 		}
 	    }

@@ -108,7 +108,7 @@ __global__ void inject_sources(float *d_po, float *d_ww,
 
 
 // divergence 3d for cpml
-#define NOP 4 // half of the order in space
+#define NOP 4
 
 __global__ void solve(float *d_fpo, float *d_po, float *d_ppo, float *d_vel,
 		      float dx, float dy, float dz, float dt,

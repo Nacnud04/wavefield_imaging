@@ -23,7 +23,7 @@ par = {
     'nra':600,'ora':10    ,'dra':0.00025,'lra':'r','ura':'km',
     'nth':400,'oth':pi/4.,'dth':0.000025,'lth':'θ','uth':'rad',
     # time parameters
-    'kt':100, 'frq':800,
+    'kt':100, 'frq':400,
     'nt':1600, 'ot':0, 'dt':0.000025, 'lt':'t', 'ut':'s',
     # model params
     'snap':'y','bnds':'y','jsnap':20,'height':6,
@@ -37,7 +37,7 @@ par['nframe'] = 20
 par['iframe'] = 8
 
 # thomsen params
-par['vp'] = 2
+par['vp'] = 1
 
 # generate velocity file
 Flow('vp',None,'''spike nsp=1 mag=%(vp)g n1=%(nra)d o1=%(ora)g d1=%(dra)g n2=%(nth)d o2=%(oth)g d2=%(dth)g |
@@ -58,7 +58,7 @@ receiver_par['uz'] = par['ura']
 
 rec_z = par['ora'] + par['nra'] * par['dra']
 
-putil.horizontal('rr-2d', rec_z, receiver_par)
+putil.horizontal('rr-2d', 10.075, receiver_par)
 
 # generate plane wave
 putil.horizontal('ss-2d', 10.09, receiver_par)
@@ -66,7 +66,7 @@ putil.horizontal('ss-2d', 10.09, receiver_par)
 # generate wavelet
 awe.wavelet('wav', par['frq'], '', par)
 
-awe.spawefd2d('dat', 'wfl', 'wav',  'vp', None, 'ss-2d', 'rr-2d', '', par)
+awe.spawefd2d('dat', 'wfl', 'wav', 'vp', None, 'ss-2d', 'rr-2d', '', par)
 
 Result('dat', 'window | transp | grey')
 

@@ -393,10 +393,6 @@ int main(int argc, char*argv[]) {
 
 	    if (snap && it%jsnap==0) {
 
-            clock_gettime(CLOCK_REALTIME, &currentTime);
-            long milliseconds = currentTime.tv_nsec / 1000000;
-            sf_warning("Pre extract time: %ld\n", milliseconds);
-
             cudaMemcpy(h_po, d_po, nxpad*nzpad*sizeof(float), cudaMemcpyDefault);
 
             if (bnds) {
@@ -404,13 +400,9 @@ int main(int argc, char*argv[]) {
             }
             else {
 
-                clock_gettime(CLOCK_REALTIME, &currentTime);
-                milliseconds = currentTime.tv_nsec / 1000000;
-                sf_warning("Pre loop time: %ld\n", milliseconds);
-
 // I did some profiling and I honestly dont think parallelization speeds anything up
 #ifdef _OPENMP
-#pragma omp parallel for schedule(dynamic) private(ix, iz) shared(po, h_po, nxpad)
+#pragma omp parallel for schedule(dynamic) private(x, z) shared(po, h_po, nxpad)
 #endif
 
                 for (int x = 0; x < nxpad; x++) {
@@ -418,10 +410,6 @@ int main(int argc, char*argv[]) {
                         po[x][z] = h_po[z*nxpad + x];
                     }
                 }
-
-                clock_gettime(CLOCK_REALTIME, &currentTime);
-                milliseconds = currentTime.tv_nsec / 1000000;
-                sf_warning("Pre cut time: %ld\n", milliseconds);
 
                 cut2d(po, oslice, fdm, az, ax);
 
