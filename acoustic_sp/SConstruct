@@ -33,7 +33,7 @@ par = {
 }
 
 # initialize params in the fdm model
-fdmod.param(par)
+awe.param(par)
 par['nframe'] = 20
 par['iframe'] = 8
 

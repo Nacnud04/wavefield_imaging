@@ -136,7 +136,7 @@ int main(int argc, char*argv[]) {
     h_ww = (float*)malloc(1 * ncs * nt*sizeof(float));
     for (int t = 0; t < nt; t++) { 
         if (t < 0.5 * nt) {h_ww[t] = ww[t];}
-        if (t > 0.5 * nt) {h_ww[t] = 0;}
+        if (t > 0.5 * nt) {h_ww[t] = 0;} // temporary hack to remove later
     }
 
     // SET UP SOURCE AND RECEIVER COORDS ----------------------------------------------------------

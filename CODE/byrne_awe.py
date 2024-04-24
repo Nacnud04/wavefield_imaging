@@ -9,6 +9,7 @@ try:    from rsf.cluster import *
 except: from rsf.proj    import *
 import fdmod
 
+path = "/home/byrne/WORK/CODE/"
 
 # -------------------------------------------------
 # Some default parameters
@@ -33,23 +34,31 @@ def param(par):
     if 'optfd'        not in par: par['optfd']='n'
     if 'hybridbc'     not in par: par['hybridbc']='n'
 
-    if 'nqx'      not in par: par['nqx']=par['nx']
-    if 'oqx'      not in par: par['oqx']=par['ox']
-    if 'dqx'      not in par: par['dqx']=par['dx']
-    if 'nqy'      not in par: par['nqy']=par['ny']
-    if 'oqy'      not in par: par['oqy']=par['oy']
-    if 'dqy'      not in par: par['dqy']=par['dy']
-    if 'nqz'      not in par: par['nqz']=par['nz']
-    if 'oqz'      not in par: par['oqz']=par['oz']
-    if 'dqz'      not in par: par['dqz']=par['dz']
+    # only do this if in cartesian coordinate system
+    if 'nx' in par:
+        if 'nqx'      not in par: par['nqx']=par['nx']
+        if 'oqx'      not in par: par['oqx']=par['ox']
+        if 'dqx'      not in par: par['dqx']=par['dx']
+        if 'nqy'      not in par: par['nqy']=par['ny']
+        if 'oqy'      not in par: par['oqy']=par['oy']
+        if 'dqy'      not in par: par['dqy']=par['dy']
+        if 'nqz'      not in par: par['nqz']=par['nz']
+        if 'oqz'      not in par: par['oqz']=par['oz']
+        if 'dqz'      not in par: par['dqz']=par['dz']
 
     # Free surface can be defined two ways
     if 'free'     not in par: 
-        if 'frsf' not in par:
+        if 'fsrf' not in par:
             par['fsrf']='n'
             par['free']='n'
         else:
-            par['free']=par['frsf']
+            par['free']=par['fsrf']
+    else :
+        if 'fsrf' not in par:
+            par['fsrf']='n'
+            par['free']='n'
+        else:
+            par['free'] = par['fsrf']
 
     # Capture absorbing boundry condition with wavefield?
     if 'bnds'      not in par: par['bnds']='n'
@@ -72,6 +81,7 @@ def awepar(par):
           verb=%(verb)s fsrf=%(fsrf)s
           dabc=%(dabc)s nb=%(nb)d
           snap=%(snap)s jsnap=%(jsnap)d
+          bnds=%(bnds)s
           '''%par + ' '
     return awe
 
@@ -113,8 +123,9 @@ def awefd2d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     
     if nGPU > 0: # if gpu's are detected run the gpu code
 
-        Flow([odat, owfl], [idat, velo, sou, rec], '''
-            /home/byrne/WORK/CODE/sfAWEFDcart2d
+        Flow([odat, owfl], [idat, velo, sou, rec],
+            f"{path}sfAWEFDcart2d" + 
+            '''
             vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
             wfl=${TARGETS[1]}
             '''  + ' ' + awepargpu(par) + ' ' + custom)
@@ -134,8 +145,9 @@ def awefd3d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
 
     if nGPU > 0: # if gpu's are detected run the gpu code
 
-        Flow([odat, owfl], [idat, velo, sou, rec], '''
-            /home/byrne/WORK/CODE/sfAWEFDcart3d 
+        Flow([odat, owfl], [idat, velo, sou, rec],
+            f"{path}sfAWEFDcart3d" +  
+            '''
             vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]} wfl=${TARGETS[1]}
             ''' + ' ' + awepargpu(par) +  ' ' + custom)
 
@@ -156,10 +168,11 @@ def awefd3d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
 
 def spawefd2d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
 
-    if nGPU > 100: # if gpu's are detected run the gpu code
+    if nGPU > 0: # if gpu's are detected run the gpu code
 
-        Flow([odat, owfl], [idat, velo, sou, rec], '''
-            /home/byrne/WORK/CODE/sfAWEFDpolar
+        Flow([odat, owfl], [idat, velo, sou, rec], 
+            f"{path}sfAWEFDpolar" + 
+            '''
             vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
             wfl=${TARGETS[1]}
             ''' + ' ' + awepargpu(par) + ' ' + custom)
@@ -167,22 +180,29 @@ def spawefd2d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     # otherwise run the non GPU version
     else:
         
-        Flow([odat, owfl], [idat, velo, sou, rec], '''
-            /home/byrne/WORK/CODE/sfAWEFDpolarcpu
+        Flow([odat, owfl], [idat, velo, sou, rec], 
+            f"{path}sfAWEFDpolarcpu" + 
+            '''
             vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
             wfl=${TARGETS[1]}
             ''' + ' ' + awepar(par) + ' ' + custom)
-        #raise NotImplementedError("CPU Code for 2d spherical acoustic model does not exist")
 
 def spawefd3d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     
-    if nGPU > 0:
+    if nGPU > 10: # if gpu's are detected run the gpu code
         
-        Flow([odat, owfl], [idat, velo, sou, rec], '''
-        /home/byrne/WORK/CODE/sfAWEFDspher
-        vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
-        wfl=${TARGETS[1]}
-        ''' + ' ' + awepargpu(par) + ' ' + custom)
+        Flow([odat, owfl], [idat, velo, sou, rec], 
+            f"{path}sfAWEFDspher" + 
+            '''
+            vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
+            wfl=${TARGETS[1]}
+            ''' + ' ' + awepargpu(par) + ' ' + custom)
 
-    else:
-        raise NotImplementedError("CPU code for 3d spherical acoustic model does not exist")
+    else: # otherwise run the cpu version
+
+        Flow([odat, owfl], [idat, velo, sou, rec], 
+            f"{path}sfAWEFDsphercpu" + 
+            '''
+            vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
+            wfl=${TARGETS[1]}
+            ''' + ' ' + awepar(par) + ' ' + custom)
