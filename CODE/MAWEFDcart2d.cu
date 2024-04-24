@@ -395,21 +395,21 @@ int main(int argc, char*argv[]) {
 
             cudaMemcpy(h_po, d_po, nxpad*nzpad*sizeof(float), cudaMemcpyDefault);
 
-            if (bnds) {
-                sf_floatwrite(h_po, nzpad*nxpad, Fwfl);
-            }
-            else {
-
-// I did some profiling and I honestly dont think parallelization speeds anything up
+            // I did some profiling and I honestly dont think parallelization speeds anything up
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic) private(x, z) shared(po, h_po, nxpad)
 #endif
 
-                for (int x = 0; x < nxpad; x++) {
-                    for (int z = 0; z < nzpad; z++) {
-                        po[x][z] = h_po[z*nxpad + x];
-                    }
+            for (int x = 0; x < nxpad; x++) {
+                for (int z = 0; z < nzpad; z++) {
+                    po[x][z] = h_po[z*nxpad + x];
                 }
+            }
+
+            if (bnds) {
+                sf_floatwrite(po[0], nzpad*nxpad, Fwfl);
+            }
+            else {
 
                 cut2d(po, oslice, fdm, az, ax);
 
