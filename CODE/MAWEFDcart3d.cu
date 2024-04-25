@@ -85,9 +85,9 @@ int main(int argc, char*argv[]) {
 
     // set up axis
     at = sf_iaxa(Fwav,2); sf_setlabel(at,"t"); if(verb) sf_raxa(at); //time
-    az = sf_iaxa(Fvel,2); sf_setlabel(az,"z"); if(verb) sf_raxa(az); //depth
+    az = sf_iaxa(Fvel,1); sf_setlabel(az,"z"); if(verb) sf_raxa(az); //depth
     ay = sf_iaxa(Fvel,3); sf_setlabel(ay,"y"); if(verb) sf_raxa(ay); //y
-    ax = sf_iaxa(Fvel,1); sf_setlabel(ax,"x"); if(verb) sf_raxa(ax); //x
+    ax = sf_iaxa(Fvel,2); sf_setlabel(ax,"x"); if(verb) sf_raxa(ax); //x
 
     as = sf_iaxa(Fsou,2); sf_setlabel(as,"s"); if(verb) sf_raxa(as); //sources    
     ar = sf_iaxa(Frec,2); sf_setlabel(ar,"r"); if(verb) sf_raxa(ar); //receivers
@@ -392,12 +392,6 @@ int main(int argc, char*argv[]) {
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 	    
 	    // INJECT PRESSURE SOURCE
-                /*
-		dim3 dimGrid7(ns, 1, 1);
-        dim3 dimBlock7(2 * nbell + 1, 2 * nbell + 1, 1);
-        lint3d_bell_gpu<<<dimGrid7, dimBlock7>>>(d_po, d_ww, d_Sw000, d_Sw001, d_Sw010, d_Sw011, d_Sw100, d_Sw101, d_Sw110, d_Sw111, d_bell, d_Sjz, d_Sjy, d_Sjx, it, ncs, 1, 0, nbell, fdm->nxpad, fdm->nzpad);
-        sf_check_gpu_error("lint2d_bell_gpu Kernel");*/
-
         dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1, 1);
 	    dim3 dimBlockS(MIN(ns, 1024), 1, 1);
         inject_sources<<<dimGridS, dimBlockS>>>(d_po, d_ww, 
@@ -452,22 +446,23 @@ int main(int argc, char*argv[]) {
 	    // EXTRACT WAVEFIELD EVERY JSNAP STEPS
 	    if (snap && it % jsnap == 0) {
 		
-		cudaMemcpy(h_po, d_po, fdm->nxpad*fdm->nypad*fdm->nzpad*sizeof(float), cudaMemcpyDefault);
-        	
-		for (int x = 0; x < fdm->nxpad; x++){
-                    for (int z = 0; z < fdm->nzpad; z++){
-			for (int y = 0; y < fdm->nypad; y++) { 
-                            po[y][x][z] = h_po[y*fdm->nzpad*fdm->nxpad + z * fdm->nxpad + x];
-                        }
-		    }
+            cudaMemcpy(h_po, d_po, fdm->nxpad*fdm->nypad*fdm->nzpad*sizeof(float), cudaMemcpyDefault);
+                
+            for (int x = 0; x < fdm->nxpad; x++){
+                for (int z = 0; z < fdm->nzpad; z++){
+                    for (int y = 0; y < fdm->nypad; y++) { 
+                        po[y][x][z] = h_po[y*fdm->nzpad*fdm->nxpad + z * fdm->nxpad + x];
+                    }
                 }
-	
-		if (bnds){
-		    sf_floatwrite(po[0][0], fdm->nzpad*fdm->nxpad*fdm->nypad, Fwfl);
-	        } else {	    
-		    cut3d(po, oslice, fdm, az, ax, ay);
-		    sf_floatwrite(oslice[0][0], sf_n(az)*sf_n(ax)*sf_n(ay), Fwfl);
-	        }
+            }
+        
+            if (bnds){
+                sf_floatwrite(po[0][0], fdm->nzpad*fdm->nxpad*fdm->nypad, Fwfl);
+            } else {	    
+                cut3d(po, oslice, fdm, az, ax, ay);
+                sf_floatwrite(oslice[0][0], sf_n(az)*sf_n(ax)*sf_n(ay), Fwfl);
+            }
+
 	    }
   
 	}

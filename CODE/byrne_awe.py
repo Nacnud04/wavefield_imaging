@@ -81,7 +81,7 @@ def awepar(par):
           verb=%(verb)s fsrf=%(fsrf)s
           dabc=%(dabc)s nb=%(nb)d
           snap=%(snap)s jsnap=%(jsnap)d
-          bnds=%(bnds)s
+          bnds=%(bnds)s expl=%(expl)s
           '''%par + ' '
     return awe
 
@@ -154,8 +154,9 @@ def awefd3d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     # otherwise run the non GPU version
     else:
         Flow([odat,owfl],[idat,velo,dens,sou,rec],
-            '''
-            awefd3d cden=n
+            f"{path}sfAWEFD3D" +  
+            ''' 
+            cden=n
             vel=${SOURCES[1]} den=${SOURCES[2]}
             sou=${SOURCES[3]} rec=${SOURCES[4]}
             wfl=${TARGETS[1]}
@@ -189,7 +190,7 @@ def spawefd2d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
 
 def spawefd3d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     
-    if nGPU > 10: # if gpu's are detected run the gpu code
+    if nGPU > 0: # if gpu's are detected run the gpu code
         
         Flow([odat, owfl], [idat, velo, sou, rec], 
             f"{path}sfAWEFDspher" + 

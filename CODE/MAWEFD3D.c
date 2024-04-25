@@ -294,6 +294,7 @@ main(int argc, char** argv)
 
   for (it=0; it<nt; it++) {
     if (verb)  sf_warning("it=%d;",it+1);
+    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 #if defined _OPENMP && _DEBUG
     tic=omp_get_wtime();
 #endif
@@ -336,7 +337,6 @@ main(int argc, char** argv)
 
     /* loop over pointers */
     ptr_tmp = u0;  u0 = u1;  u1 = ptr_tmp;
-
     /* extract snapshot */
     if (snap && it%jsnap==0) {
       int fy = (floor)((sf_o(acy)-fdm->oypad)/fdm->dy);
