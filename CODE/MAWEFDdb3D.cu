@@ -6,7 +6,7 @@ extern "C" {
 }
 
 #include "fdutil_old.c"
-#include "amodelca_kernels.cu"
+#include "amodel3d_kernels.cu"
 
 #define MIN(x, y) (((x) < (y)) ? (x): (y))
 #define NOP 4

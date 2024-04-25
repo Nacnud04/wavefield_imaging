@@ -35,8 +35,8 @@ if machine=='gpu1' or machine=='gpu3':
     targetsCUDA = \
         '''
         AWEFDpolar
-        AWEFDcart2d
-        AWEFDcart3d
+        AWEFDdb2D
+        AWEFDdb3D
         AWEFDspher
         '''
     for prog in Split(targetsCUDA):

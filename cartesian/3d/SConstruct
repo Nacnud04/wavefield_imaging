@@ -68,7 +68,7 @@ awe.wavelet('wav', par['frq'], '', par)
 # run acoustic model
 awe.awefd3d('dat', 'wfl', 'wav',  'vp', 'vp', 'ss-3d', 'rr-3d', '', par)
 
-Result('dat', f'window n2={par["nx"]} f2=160000 | transp | grey')
+Result('dat', f'sfwindow | sfgraph')
 
 Result('wfl', f'window n2=1 f2={par["ny"]/2} | sfgrey gainpanel=a')
 

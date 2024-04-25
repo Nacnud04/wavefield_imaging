@@ -124,7 +124,7 @@ def awefd2d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     if nGPU > 0: # if gpu's are detected run the gpu code
 
         Flow([odat, owfl], [idat, velo, sou, rec],
-            f"{path}sfAWEFDcart2d" + 
+            f"{path}sfAWEFDdb2D" + 
             '''
             vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
             wfl=${TARGETS[1]}
@@ -146,7 +146,7 @@ def awefd3d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     if nGPU > 0: # if gpu's are detected run the gpu code
 
         Flow([odat, owfl], [idat, velo, sou, rec],
-            f"{path}sfAWEFDcart3d" +  
+            f"{path}sfAWEFDdb3D" +  
             '''
             vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]} wfl=${TARGETS[1]}
             ''' + ' ' + awepargpu(par) +  ' ' + custom)
