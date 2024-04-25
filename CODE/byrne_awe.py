@@ -172,7 +172,7 @@ def spawefd2d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     if nGPU > 0: # if gpu's are detected run the gpu code
 
         Flow([odat, owfl], [idat, velo, sou, rec], 
-            f"{path}sfAWEFDpolar" + 
+            f"{path}sfAWEFDdbpo" + 
             '''
             vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
             wfl=${TARGETS[1]}
@@ -182,7 +182,7 @@ def spawefd2d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     else:
         
         Flow([odat, owfl], [idat, velo, sou, rec], 
-            f"{path}sfAWEFDpolarcpu" + 
+            f"{path}sfAWEFDdbpocpu" + 
             '''
             vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
             wfl=${TARGETS[1]}
@@ -193,7 +193,7 @@ def spawefd3d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     if nGPU > 0: # if gpu's are detected run the gpu code
         
         Flow([odat, owfl], [idat, velo, sou, rec], 
-            f"{path}sfAWEFDspher" + 
+            f"{path}sfAWEFDdbsp" + 
             '''
             vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
             wfl=${TARGETS[1]}
@@ -202,7 +202,7 @@ def spawefd3d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     else: # otherwise run the cpu version
 
         Flow([odat, owfl], [idat, velo, sou, rec], 
-            f"{path}sfAWEFDsphercpu" + 
+            f"{path}sfAWEFDdbspcpu" + 
             '''
             vel=${SOURCES[1]} sou=${SOURCES[2]} rec=${SOURCES[3]}
             wfl=${TARGETS[1]}

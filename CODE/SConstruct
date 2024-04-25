@@ -20,8 +20,8 @@ targets.c = \
 '''
 AWEFDcart
 AWEFD3D
-AWEFDpolarcpu
-AWEFDsphercpu
+AWEFDdbpocpu
+AWEFDdbspcpu
 '''
 
 targets.build_all(env, glob_build, rsfroot, bindir, libdir, pkgdir)
@@ -34,10 +34,10 @@ if machine=='gpu1' or machine=='gpu3':
     nvcc    = env.get('NVCC')
     targetsCUDA = \
         '''
-        AWEFDpolar
+        AWEFDdbpo
         AWEFDdb2D
         AWEFDdb3D
-        AWEFDspher
+        AWEFDdbsp
         '''
     for prog in Split(targetsCUDA):
         cflags  = '-prec-div=true -arch=sm_60 --x=cu'
