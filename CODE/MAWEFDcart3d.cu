@@ -160,8 +160,8 @@ int main(int argc, char*argv[]) {
     // for this we basically have to compute the weights of the wavelet to make it correct when on the grid
     ncs = 1;
     float *ww=NULL;
-    ww = sf_floatalloc(1); // allocate variable for ncs dimensions over nt time
-    sf_floatread(ww, 1, Fwav); // read the wavelet into the allocated memory
+    ww = sf_floatalloc(nt); // allocate variable for ncs dimensions over nt time
+    sf_floatread(ww, nt, Fwav); // read the wavelet into the allocated memory
 
     float *h_ww;
     h_ww = (float*)malloc(nt*sizeof(float));

@@ -153,14 +153,13 @@ int main(int argc, char*argv[]) {
     // MOVE SOURCE WAVELET INTO THE GPU
     ncs = 1;
     float *ww = NULL;
-    ww = sf_floatalloc(1); // allocate var for ncs dims over nt time
-    sf_floatread(ww, 1, Fwav); // read wavelet into allocated mem
+    ww = sf_floatalloc(nt); // allocate var for ncs dims over nt time
+    sf_floatread(ww, nt, Fwav); // read wavelet into allocated mem
 
     float *h_ww;
     h_ww = (float*)malloc(1 * ncs * nt*sizeof(float));
     for (int t = 0; t < nt; t++) { 
-        if (t < 0.5 * nt) {h_ww[t] = ww[t];}
-        if (t > 0.5 * nt) {h_ww[t] = 0;}
+        h_ww[t] = ww[t];
     }
 
     float *d_ww;
