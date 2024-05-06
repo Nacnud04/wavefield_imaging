@@ -18,10 +18,10 @@ bindir = libdir = pkgdir = None
 targets = bldutil.UserSconsTargets()
 targets.c = \
 '''
-AWEFDcart
-AWEFD3D
-AWEFDdbpocpu
-AWEFDdbspcpu
+AWEFDcart2Dcpu
+AWEFDcart3Dcpu
+AWEFDspher2Dcpu
+AWEFDspher3Dcpu
 '''
 
 targets.build_all(env, glob_build, rsfroot, bindir, libdir, pkgdir)
@@ -34,10 +34,10 @@ if machine=='gpu1' or machine=='gpu3':
     nvcc    = env.get('NVCC')
     targetsCUDA = \
         '''
-        AWEFDdbpo
-        AWEFDdb2D
-        AWEFDdb3D
-        AWEFDdbsp
+        AWEFDcart2Dgpu
+        AWEFDcart3Dgpu
+        AWEFDspher2Dgpu
+        AWEFDspher3Dgpu
         '''
     for prog in Split(targetsCUDA):
         cflags  = '-prec-div=true -arch=sm_60 --x=cu'
