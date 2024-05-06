@@ -7,7 +7,7 @@ extern "C" {
 
 #include "fdutil_old.c"
 
-#include "amodelpo_kernels.cu"
+#include "spher_kernels.cu"
 
 #define MIN(x, y) (((x) < (y)) ? (x): (y))
 #define NOP 4
@@ -344,7 +344,7 @@ int main(int argc, char*argv[]) {
 	    // INJECT PRESSURE SOURCE
         dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1);
         dim3 dimBlockS(MIN(ns, 1024), 1);
-        inject_sources<<<dimGridS,dimBlockS>>>(d_po, d_ww, 
+        inject_sources_2D<<<dimGridS,dimBlockS>>>(d_po, d_ww, 
                        d_Sw00, d_Sw01, d_Sw10, d_Sw11,
                        d_Sjra, d_Sjth, it, ns, nrapad, nthpad);
         sf_check_gpu_error("inject sources Kernel");
@@ -352,31 +352,31 @@ int main(int argc, char*argv[]) {
 	    // APPLY WAVE EQUATION
 	    dim3 dimGrid2(ceil(nrapad/8.0f),ceil(nthpad/8.0f));
 	    dim3 dimBlock2(8,8);
-	    solve<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
+	    solve_2D<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
 			    		  d_vel,
 					  dra, dth, ora, oth, dt,
 					  nrapad, nthpad);
 	    sf_check_gpu_error("solve Kernel");
 	    
 	    // SHIFT PRESSURE FIELDS IN TIME
-	    shift<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
+	    shift_2D<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
 					   nrapad, nthpad);
 	    sf_check_gpu_error("shift Kernel");
 
 	    // ONE WAY BC
-	    onewayBC<<<dimGrid2, dimBlock2>>>(d_po, d_ppo,
+	    onewayBC_2D<<<dimGrid2, dimBlock2>>>(d_po, d_ppo,
 			                      d_bthl, d_bthh, d_bral, d_brah,
 					      nrapad, nthpad);
 	    
 	    // SPONGE
-	    spongeKernel<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nthpad, nb);
+	    spongeKernel_2D<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nthpad, nb);
 	    sf_check_gpu_error("sponge Kernel");
-	    spongeKernel<<<dimGrid2, dimBlock2>>>(d_ppo, nrapad, nthpad, nb);
+	    spongeKernel_2D<<<dimGrid2, dimBlock2>>>(d_ppo, nrapad, nthpad, nb);
             sf_check_gpu_error("sponge Kernel");
 
 	    // FREE SURFACE
         if (fsrf) {
-            freeSurf<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nthpad, nb);
+            freeSurf_2D<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nthpad, nb);
             sf_check_gpu_error("freeSurf Kernel");
         }
 
@@ -403,7 +403,7 @@ int main(int argc, char*argv[]) {
 	    dim3 dimGrid3(MIN(nr, ceil(nr/1024.0f)), 1);
 	    dim3 dimBlock3(MIN(nr, 1024), 1);
 
-	    extract<<<dimGrid3, dimBlock3>>>(d_dd_pp, it, nr,
+	    extract_2D<<<dimGrid3, dimBlock3>>>(d_dd_pp, it, nr,
 			    		     nrapad, nthpad, 
 					     d_po, d_Rjra, d_Rjth,
 					     d_Rw00, d_Rw01, d_Rw10, d_Rw11);

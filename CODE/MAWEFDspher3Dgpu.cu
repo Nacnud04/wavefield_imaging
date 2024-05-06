@@ -7,7 +7,7 @@ extern "C" {
 
 #include "fdutil_old.c"
 
-#include "amodelsp_kernels.cu"
+#include "spher_kernels.cu"
 
 #define MIN(x, y) (((x) < (y)) ? (x): (y))
 #define NOP 4
@@ -245,7 +245,7 @@ int main(int argc, char*argv[]) {
     
     // read in velocity data & expand domain
     sf_floatread(tt1, nra*nth*nph, Fvel);
-    expand_cpu_3d(tt1, h_vel, fdm->nb, nra, nrapad, nph, nphpad, nth, nthpad);
+    expand_cpu_3D(tt1, h_vel, fdm->nb, nra, nrapad, nph, nphpad, nth, nthpad);
     cudaMalloc((void **)&d_vel, nthpad*nrapad*nphpad*sizeof(float));
     sf_check_gpu_error("allocated velocity to device");
     cudaMemcpy(d_vel, h_vel, nthpad*nrapad*nphpad*sizeof(float), cudaMemcpyHostToDevice);
@@ -436,7 +436,7 @@ int main(int argc, char*argv[]) {
         
         dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1, 1);
 	    dim3 dimBlockS(MIN(ns, 1024), 1, 1);
-        inject_sources<<<dimGridS, dimBlockS>>>(d_po, d_ww, 
+        inject_sources_3D<<<dimGridS, dimBlockS>>>(d_po, d_ww, 
 			    d_Sw000, d_Sw001, d_Sw010, d_Sw011, 
 			    d_Sw100, d_Sw101, d_Sw110, d_Sw111, 
 			    d_Sjra, d_Sjph, d_Sjth, 
@@ -447,38 +447,38 @@ int main(int argc, char*argv[]) {
 	    dim3 dimBlock2(8,8,8);
         
 	    // APPLY WAVE EQUATION
-	    solve<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
+	    solve_3D<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
                 d_vel,
                 dra, dph, dth, ora, oph, oth, dt,
                 nrapad, nphpad, nthpad);
 	    sf_check_gpu_error("solve Kernel");
 
 	    // SHIFT PRESSURE FIELDS IN TIME
-	    shift<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
+	    shift_3D<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
                 nrapad, nphpad, nthpad);
 	    sf_check_gpu_error("shift Kernel");
 
 	    // ONE WAY BC
-	    onewayBC<<<dimGrid2,dimBlock2>>>(d_po, d_ppo,
+	    onewayBC_3D<<<dimGrid2,dimBlock2>>>(d_po, d_ppo,
                 d_bthl, d_bthh, d_bral, d_brah, d_bphl, d_bphh,
                 nrapad, nphpad, nthpad);
 
 	    // SPONGE
-	    spongeKernel<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
+	    spongeKernel_3D<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
 	    sf_check_gpu_error("sponge Kernel1");
-	    spongeKernel<<<dimGrid2, dimBlock2>>>(d_ppo, nrapad, nphpad, nthpad, nb);
+	    spongeKernel_3D<<<dimGrid2, dimBlock2>>>(d_ppo, nrapad, nphpad, nthpad, nb);
         sf_check_gpu_error("sponge Kernel2");
 
 	    // FREE SURFACE
         if (fsrf) {
-            freeSurf<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
+            freeSurf_3D<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
             sf_check_gpu_error("free surface Kernel");
         }
 		
 	    // RECEIVERS
 	    dim3 dimGridR(MIN(nr, ceil(nr/1024.0f)), 1, 1);
 	    dim3 dimBlockR(MIN(nr, 1024), 1, 1);
-	    lint3d_extract_gpu<<<dimGridR, dimBlockR>>>(d_dd_pp, it, nr,
+	    extract_3D<<<dimGridR, dimBlockR>>>(d_dd_pp, it, nr,
                 nrapad, nphpad, nthpad, 
                 d_po, d_Rjra, d_Rjph, d_Rjth,
                 d_Rw000, d_Rw001, d_Rw010, d_Rw011,

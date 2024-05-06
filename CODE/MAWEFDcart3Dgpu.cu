@@ -6,7 +6,7 @@ extern "C" {
 }
 
 #include "fdutil_old.c"
-#include "amodel3d_kernels.cu"
+#include "cart_kernels.cu"
 
 #define MIN(x, y) (((x) < (y)) ? (x): (y))
 #define NOP 4
@@ -394,7 +394,7 @@ int main(int argc, char*argv[]) {
 	    // INJECT PRESSURE SOURCE
         dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1, 1);
 	    dim3 dimBlockS(MIN(ns, 1024), 1, 1);
-        inject_sources<<<dimGridS, dimBlockS>>>(d_po, d_ww, 
+        inject_sources_3D<<<dimGridS, dimBlockS>>>(d_po, d_ww, 
 			    d_Sw000, d_Sw001, d_Sw010, d_Sw011, 
 			    d_Sw100, d_Sw101, d_Sw110, d_Sw111, 
 			    d_Sjx, d_Sjy, d_Sjz, 
@@ -403,39 +403,39 @@ int main(int argc, char*argv[]) {
 
 	    dim3 dimGrid4(ceil(fdm->nxpad/8.0f),ceil(fdm->nypad/8.0f),ceil(fdm->nzpad/8.0f));
         dim3 dimBlock4(8,8,8);
-	    solve<<<dimGrid4, dimBlock4>>>(d_fpo, d_po, d_ppo,
+	    solve_3D<<<dimGrid4, dimBlock4>>>(d_fpo, d_po, d_ppo,
                                         d_vel,
                                         dx, dy, dz, dt,
                                         fdm->nxpad, fdm->nypad, fdm->nzpad);
 	    sf_check_gpu_error("solve Kernel");
 
-	    shift<<<dimGrid4, dimBlock4>>>(d_fpo, d_po, d_ppo,
+	    shift_3D<<<dimGrid4, dimBlock4>>>(d_fpo, d_po, d_ppo,
 			    		   fdm->nxpad, fdm->nypad, fdm->nzpad);
 	    sf_check_gpu_error("shift Kernel");
 
 	    // APPLY FREE SURFACE BOUNDARY CONDITION   
 	    dim3 dimGrid3(ceil(fdm->nxpad/8.0f), ceil(fdm->nypad/8.0f), ceil(fdm->nzpad/8.0f));
 	    dim3 dimBlock3(8,8,8);
-	    freeSurf<<<dimGrid3,dimBlock3>>>(d_po, fdm->nxpad, fdm->nypad, fdm->nzpad, fdm->nb);
+	    freeSurf_3D<<<dimGrid3,dimBlock3>>>(d_po, fdm->nxpad, fdm->nypad, fdm->nzpad, fdm->nb);
 	    sf_check_gpu_error("freeSurf Kernel");
 
 	    // ONE WAY BC
-	    onewayBC<<<dimGrid3,dimBlock3>>>(d_po, d_ppo, 
+	    onewayBC_3D<<<dimGrid3,dimBlock3>>>(d_po, d_ppo, 
 			                     d_bzl, d_bzh, d_bxl, d_bxh, d_byl, d_byh, 
 					     fdm->nxpad, fdm->nypad, fdm->nzpad);
 	    
 	    // APPLY SPONGE BOUNDARY CONDITION
-	    spongeKernel<<<dimGrid3, dimBlock3>>>(d_po, fdm->nxpad, fdm->nypad, fdm->nzpad, fdm->nb);
+	    spongeKernel_3D<<<dimGrid3, dimBlock3>>>(d_po, fdm->nxpad, fdm->nypad, fdm->nzpad, fdm->nb);
 	    sf_check_gpu_error("sponge Kernel");
-	    spongeKernel<<<dimGrid3, dimBlock3>>>(d_ppo, fdm->nxpad, fdm->nypad, fdm->nzpad, fdm->nb);
-            sf_check_gpu_error("sponge Kernel");
+	    spongeKernel_3D<<<dimGrid3, dimBlock3>>>(d_ppo, fdm->nxpad, fdm->nypad, fdm->nzpad, fdm->nb);
+        sf_check_gpu_error("sponge Kernel");
 	    
 	    // MOVE DATA TO GPU
 	    if (it % jdata == 0) {
 		itr += 1;
 		dim3 dimGrid_extract(MIN(nr, ceil(nr/1024.0f)), 1, 1);
 		dim3 dimBlock_extract(MIN(nr, 1024), 1, 1);
-		lint3d_extract_gpu<<<dimGrid_extract, dimBlock_extract>>>(d_dd_pp, 
+		extract_3D<<<dimGrid_extract, dimBlock_extract>>>(d_dd_pp, 
                                         itr, nr, fdm->nxpad, fdm->nypad, fdm->nzpad,
 									  d_po, d_Rjx, d_Rjy, d_Rjz,
 									  d_Rw000, d_Rw001, d_Rw010, d_Rw011,
