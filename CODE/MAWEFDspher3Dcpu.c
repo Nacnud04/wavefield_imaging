@@ -1,6 +1,6 @@
 #include <rsf.h>
 #include "fdutil.c"
-#include "cpuspherutils.c"
+#include "spher_utils.c"
 
 #define NOP 4
 
@@ -300,35 +300,35 @@ int main(int argc, char*argv[]) {
         fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
         // inject pressure source
-        inject_sources(h_po, h_ww, 
+        inject_sources_3D(h_po, h_ww, 
                        cs->w000, cs->w001, cs->w010, cs->w011, cs->w100, cs->w101, cs->w110, cs->w111,
                        cs->jx, cs->jy, cs->jz,
                        it, ns, nrapad, nphpad, nthpad);
 
         // solve wave equation
-        solve(h_fpo, h_po, h_ppo, h_vel,
+        solve_3D(h_fpo, h_po, h_ppo, h_vel,
               dra, dph, dth, ora, oph, oth, dt,
               nrapad, nphpad, nthpad);
 
         // shift pressure fields
-        shift(h_fpo, h_po, h_ppo, nrapad, nphpad, nthpad);
+        shift_3D(h_fpo, h_po, h_ppo, nrapad, nphpad, nthpad);
 
         // one way boundary conditions
-        onewayBC(h_po, h_ppo, one_bthl, 
+        onewayBC_3D(h_po, h_ppo, one_bthl, 
                  one_bthh, one_brah, one_bral, one_bphl, one_bphh,
                  nrapad, nphpad, nthpad);
 
         // sponge
-        spongeBC(h_po, nrapad, nphpad, nthpad, nb);
-        spongeBC(h_ppo, nrapad, nphpad, nthpad, nb);
+        spongeBC_3D(h_po, nrapad, nphpad, nthpad, nb);
+        spongeBC_3D(h_ppo, nrapad, nphpad, nthpad, nb);
 
         // free surface
         if (fsrf) {
-            freeBC(h_po, nrapad, nphpad, nthpad, nb);
+            freeBC_3D(h_po, nrapad, nphpad, nthpad, nb);
         }
 
         // extract data to receivers
-        extract(h_dd_pp, it, nr, nrapad, nphpad, nthpad, h_po,
+        extract_3D(h_dd_pp, it, nr, nrapad, nphpad, nthpad, h_po,
                 cr->jx, cr->jy, cr->jz, 
                 cr->w000, cr->w001, cr->w010, cr->w011, cr->w100, cr->w101, cr->w110, cr->w111);
 

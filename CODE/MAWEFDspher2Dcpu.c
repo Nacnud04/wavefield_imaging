@@ -1,7 +1,7 @@
 #include <rsf.h>
 
 #include "fdutil_old.c"
-#include "cpupolarutils.c"
+#include "spher_utils.c"
 
 #define NOP 4
 
@@ -263,29 +263,29 @@ int main(int argc, char*argv[]) {
         fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
         // inject sources
-        inject_sources(h_po, h_ww, cs->w00, cs->w01, cs->w10, cs->w11,
+        inject_sources_2D(h_po, h_ww, cs->w00, cs->w01, cs->w10, cs->w11,
                        cs->jx, cs->jz, it, ns, nrapad, nthpad);
 
         // solve for next time step
-        solve(h_fpo, h_po, h_ppo, h_vel, dra, dth, ora, oth, dt, nrapad, nthpad);
+        solve_2D(h_fpo, h_po, h_ppo, h_vel, dra, dth, ora, oth, dt, nrapad, nthpad);
 
         // shift pressure fields in time
-        shift(h_fpo, h_po, h_ppo, nrapad, nthpad);
+        shift_2D(h_fpo, h_po, h_ppo, nrapad, nthpad);
 
         // apply one way boundary conditions
-        onewayBC(h_po, h_ppo, one_bthl, one_bthh, one_bral, one_brah, nrapad, nthpad);
+        onewayBC_2D(h_po, h_ppo, one_bthl, one_bthh, one_bral, one_brah, nrapad, nthpad);
 
         // apply sponge twice
-        spongeBC(h_po, nrapad, nthpad, nb);
-        spongeBC(h_ppo, nrapad, nthpad, nb);
+        spongeBC_2D(h_po, nrapad, nthpad, nb);
+        spongeBC_2D(h_ppo, nrapad, nthpad, nb);
 
         // apply free surface if needed
         if (fsrf) {
-            freeSurf(h_po, nrapad, nthpad, nb);
+            freeSurf_2D(h_po, nrapad, nthpad, nb);
         }
 
         // extract data to receivers
-        extract(h_dd_pp, it, nr, nrapad, nthpad,
+        extract_2D(h_dd_pp, it, nr, nrapad, nthpad,
                 h_po, cr->jx, cr->jz, cr->w00, cr->w01, cr->w10, cr->w11);
 
         if (snap && it % jsnap == 0) {
