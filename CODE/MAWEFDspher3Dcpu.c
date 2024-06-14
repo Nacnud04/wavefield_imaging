@@ -37,7 +37,7 @@ int main(int argc, char*argv[]) {
     fdm3d fdm=NULL;
 
     // device and host velocity
-    float *h_vel, *d_vel;
+    float *h_vel;
     
     // pressure
     float *h_fpo, *h_po, *h_ppo; // future, present, past

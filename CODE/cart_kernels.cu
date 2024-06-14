@@ -455,7 +455,6 @@ __global__ void onewayBC_3D(float *uo, float *um,
 	int ix = threadIdx.x + blockIdx.x * blockDim.x;
 	int iy = threadIdx.y + blockIdx.y * blockDim.y;
 	int iz = threadIdx.z + blockIdx.z * blockDim.z;
-	int iop;
 
 	int addr = iy * nxpad * nzpad + iz * nxpad + ix;
 
@@ -474,15 +473,15 @@ __global__ void onewayBC_3D(float *uo, float *um,
 			           d_bzh[iy*nxpad + ix];	
 		}
 
-                if (ix <= NOP) {
-                        int taddr = iy*nxpad*nzpad + iz*nxpad + ix + 1;
-                        uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *                                                                  d_bxl[iy*nzpad + iz];
-                }
-                if (ix >= nxpad-NOP-1) {
-                        int taddr = iy*nxpad*nzpad + iz*nxpad + ix - 1;
-                        uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
-                                   d_bzh[iy*nzpad + iz];
-                }
+		if (ix <= NOP) {
+				int taddr = iy*nxpad*nzpad + iz*nxpad + ix + 1;
+				uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *                                                                  d_bxl[iy*nzpad + iz];
+		}
+		if (ix >= nxpad-NOP-1) {
+				int taddr = iy*nxpad*nzpad + iz*nxpad + ix - 1;
+				uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
+							d_bzh[iy*nzpad + iz];
+		}
 
 		if (iy <= NOP) {
 			int taddr = (iy+1)*nxpad*nzpad + iz*nxpad + ix;

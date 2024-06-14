@@ -240,9 +240,8 @@ __global__ void solve_2D(float *d_fpo, float *d_po, float *d_ppo, float *d_vel,
 		float compra, compth;
 
 		// extract true location from deltas and indicies
-		float ra; float th;
+		float ra;
 		ra = dra * ira + ora;
-		th = dth * ith + oth;
 		
 		// extract true velocity
 		float v;
@@ -292,9 +291,8 @@ __global__ void solve_3D(float *d_fpo, float *d_po, float *d_ppo, float *d_vel,
 		int globalAddr = iph * nthpad * nrapad + ith * nrapad + ira;			  float laplace;
 
 		// extract true location from deltas and indicies
-		float ra; float ph; float th;
+		float ra; float th;
 		ra = dra * ira + ora;
-		ph = dph * iph + oph;
 		th = dth * ith + oth;
 		
 		// extract true velocity
@@ -550,41 +548,51 @@ __global__ void onewayBC_3D(float *uo, float *um,
         int ix = threadIdx.x + blockIdx.x * blockDim.x;
         int iy = threadIdx.y + blockIdx.y * blockDim.y;
         int iz = threadIdx.z + blockIdx.z * blockDim.z;
-        int iop;
 
         int addr = iy * nxpad * nzpad + iz * nxpad + ix;
 
         if (ix < nxpad && iy < nypad && iz < nzpad) {
 
+                int iop;
+
+                if (ix < NOP) {iop = ix;}
+                else if (ix > nxpad - NOP) {iop = nxpad - ix;}
+                else if (iz < NOP) {iop = iz;}
+                else if (iz > nzpad - NOP) {iop = nzpad - iz;}
+                else if (iy < NOP) {iop = iy;}
+                else if (iy > nypad - NOP) {iop = nypad - iy;}
+                else {iop = 0;}
+
                 // top bc
-                if (iz <= NOP) {
+                if (iz <= NOP - iop) {
                         int taddr = iy*nxpad*nzpad + (iz+1)*nxpad + ix;
                         uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
                                    d_bzl[iy*nxpad + ix];
                 }
                 // bottom bc
-                if (iz >= nzpad-NOP-1) {
+                if (iz >= nzpad-NOP-1+iop) {
                         int taddr = iy*nxpad*nzpad + (iz-1)*nxpad + ix;
                         uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
                                    d_bzh[iy*nxpad + ix];
                 }
 
-                if (ix <= NOP) {
+                if (ix <= NOP-iop) {
                         int taddr = iy*nxpad*nzpad + iz*nxpad + ix + 1;
-                        uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *                                                                  d_bxl[iy*nzpad + iz];
+                        uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
+                                   d_bxl[iy*nzpad + iz];
                 }
-                if (ix >= nxpad-NOP-1) {
+                if (ix >= nxpad-NOP-1+iop) {
                         int taddr = iy*nxpad*nzpad + iz*nxpad + ix - 1;
                         uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
                                    d_bzh[iy*nzpad + iz];
                 }
 
-                if (iy <= NOP) {
+                if (iy <= NOP-iop) {
                         int taddr = (iy+1)*nxpad*nzpad + iz*nxpad + ix;
                         uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
                                    d_byl[iz*nxpad + ix];
                 }
-                if (iy >= nypad-NOP-1) {
+                if (iy >= nypad-NOP-1+iop) {
                         int taddr = (iy-1)*nxpad*nzpad + iz*nxpad + ix;
                         uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
                                    d_byh[iz*nxpad + ix];

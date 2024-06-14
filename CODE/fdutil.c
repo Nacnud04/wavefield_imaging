@@ -40,10 +40,10 @@ typedef struct spon *sponge;
 typedef struct ofg *ofg2d;
 /*^*/
 
-typedef struct PML2D *PML2D;
+typedef struct PML2D *p2d;
 /*^*/
 
-typedef struct PML3D *PML3D;
+typedef struct PML3D *p3d;
 /*^*/
 
 struct fdm2{
@@ -2349,14 +2349,14 @@ bool cfl_acoustic(
 /* PML ROUTINES */
 /****************/
 /*------------------------------------------------------------*/
-PML2D pml2d_init(fdm2d fdm)
+p2d pml2d_init(fdm2d fdm)
 
 /*< initialize the 2D PML >*/
 {
     int ix, iz;
-    PML2D pml;
+    p2d pml;
     
-    pml = (PML2D) sf_alloc(1,sizeof(*pml));
+    pml = (p2d) sf_alloc(1,sizeof(*pml));
     
     /* sides of the computational domain */
     pml->up    = sf_floatalloc2(fdm->nb, fdm->nxpad);
@@ -2415,16 +2415,16 @@ PML2D pml2d_init(fdm2d fdm)
 }
 
 /*------------------------------------------------------------*/
-PML3D pml3d_init(fdm3d fdm)
+p3d pml3d_init(fdm3d fdm)
 
 /*< initialize the 3D PML >*/
 {
     
     /* INITIALIZATION to zeros is still missing! */
     
-    PML3D pml;
+    p3d pml;
     
-    pml = (PML3D) sf_alloc(1,sizeof(*pml));
+    pml = (p3d) sf_alloc(1,sizeof(*pml));
     
     pml->Upsizx  = sf_floatalloc3(fdm->nb, fdm->nxpad, fdm->nypad);
     pml->Upsizy  = sf_floatalloc3(fdm->nb, fdm->nxpad, fdm->nypad);
@@ -2621,7 +2621,7 @@ void pml2d_presApply(float   **u,
                      float  **vx,
                      float  **vz,
                      float    dt,
-                     PML2D   pml,
+                     p2d   pml,
                      float **com,
                      float *sigma,
                      fdm2d   fdm)
@@ -2782,7 +2782,7 @@ void pml3d_presApply(float   ***u,
                      float  ***vy,
                      float  ***vz,
                      float     dt,
-                     PML3D    pml,
+                     p3d    pml,
                      float ***com,
                      float *sigma,
                      fdm3d    fdm)
@@ -3195,7 +3195,7 @@ void pml3d_presApply(float   ***u,
 }
 
 /*------------------------------------------------------------*/
-void pml2d_free(PML2D pml)
+void pml2d_free(p2d pml)
 
 /*< free the memory allocated for the 2D PML >*/
 {
@@ -3215,7 +3215,7 @@ void pml2d_free(PML2D pml)
 
 
 /*------------------------------------------------------------*/
-void pml3d_free(PML3D pml)
+void pml3d_free(p3d pml)
 
 /*< free the memory allocated for the 3D PML >*/
 {

@@ -1,6 +1,7 @@
 #include <rsf.h>
+#include <rsf_su.h>
 
-#include "fdutil_old.c"
+#include "fdutil.c"
 #include "spher_utils.c"
 
 #define NOP 4
@@ -31,7 +32,7 @@ int main(int argc, char*argv[]) {
 
     // define dimension sizes
     int nt, nra, nth, ns, nr, ncs, nb;
-    int it, ira, ith;
+    int it;
     float dt, dra, dth;
     float ot, ora, oth;
 
@@ -39,7 +40,7 @@ int main(int argc, char*argv[]) {
     fdm2d fdm=NULL;
 
     // device and host velocity
-    float *h_vel, *d_vel;
+    float *h_vel;
     // pressure
     float *h_po, *h_fpo, *h_ppo; // future, present, past
     
@@ -236,13 +237,14 @@ int main(int argc, char*argv[]) {
 	cr = lint2d_make(nr, rr, fdm);
 
     // SET PRESSURE ARRAY AND DATA ARRAY TO 0 TO START ------------------------------------------------------------
+    int ira, ith;
 
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic) private(ira, ith) shared(h_po, nrapad, nthpad)
 #endif
 
-    for (int ira=0; ira < nrapad; ira++) {
-        for (int ith=0; ith < nthpad; ith++) {
+    for (ira=0; ira < nrapad; ira++) {
+        for (ith=0; ith < nthpad; ith++) {
             h_po[ith * nrapad + ira] = 0;
         }
     }

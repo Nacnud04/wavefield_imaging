@@ -3,9 +3,10 @@
 
 extern "C" {
     #include <rsf.h>
+    #include <rsf_su.h>
 }
 
-#include "fdutil_old.c"
+#include "fdutil.c"
 
 #include "spher_kernels.cu"
 
@@ -40,7 +41,7 @@ int main(int argc, char*argv[]) {
 
     // define dimension sizes
     int nt, nra, nth, ns, nr, ncs, nb;
-    int it, ira, ith;
+    int it;
     float dt, dra, dth;
     float ot, ora, oth;
 

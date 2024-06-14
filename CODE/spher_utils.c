@@ -178,12 +178,12 @@ void solve_2D(float *fpo, float *po, float *ppo, float *vel,
            int nrapad, int nthpad) {
 
         int ira, ith, addr;
-        float laplace, compra, compth, ra, th;
+        float laplace, compra, compth, ra;
         float v;
 
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic) \
-        private(ira, ith, ra, th, laplace, compra, compth, v, addr) \
+        private(ira, ith, ra, laplace, compra, compth, v, addr) \
         shared(fpo, po, ppo, vel, dra, dth, ora, oth, dt, nrapad, nthpad)
 #endif
 
@@ -194,7 +194,6 @@ void solve_2D(float *fpo, float *po, float *ppo, float *vel,
 
                         // find true location using deltas and indicies
                         ra = dra * ira + ora;
-                        th = dth * ith + oth;
 
                         // extract true velocity
                         v = vel[addr];
@@ -249,9 +248,8 @@ void solve_3D(float *fpo, float *po, float *ppo, float *vel,
                 addr = iph * nthpad * nrapad + ith * nrapad + ira;			  
 
                 // extract true location from deltas and indicies
-                float ra; float ph; float th;
+                float ra; float th;
                 ra = dra * ira + ora;
-                ph = dph * iph + oph;
                 th = dth * ith + oth;
                 
                 // extract true velocity
@@ -382,11 +380,11 @@ void onewayBC_2D(float *uo, float *um,
                         addr = ith * nrapad + ira;
 
                         if (ira < NOP) {iop = ira;}
-                        if (ira > nrapad - NOP) {iop = nrapad - ira;}
+                        else if (ira > nrapad - NOP) {iop = nrapad - ira;}
+                        else if (ith < NOP) {iop = ith;}
+                        else if (ith > nthpad - NOP) {iop = nthpad - ith;}
+                        else {iop = 0;}
 
-                        if (ith < NOP) {iop = ith;}
-                        if (ith > nthpad - NOP) {iop = nthpad - ith;}
-                        
                         // top bc
                         if (ith == NOP-iop) {
                                 uo[addr] =  um[(ith+1)*nrapad+ira] +
@@ -438,13 +436,12 @@ void onewayBC_3D(float *uo, float *um,
                 int iop;
 
                 if (ix < NOP) {iop = ix;}
-                if (ix > nxpad - NOP) {iop = nxpad - ix;}
-
-                if (iz < NOP) {iop = iz;}
-                if (iz > nzpad - NOP) {iop = nzpad - iz;}
-
-                if (iy < NOP) {iop = iy;}
-                if (iy > nypad - NOP) {iop = nypad - iy;}
+                else if (ix > nxpad - NOP) {iop = nxpad - ix;}
+                else if (iz < NOP) {iop = iz;}
+                else if (iz > nzpad - NOP) {iop = nzpad - iz;}
+                else if (iy < NOP) {iop = iy;}
+                else if (iy > nypad - NOP) {iop = nypad - iy;}
+                else {iop = 0;}
 
                 // top bc
                 if (iz <= NOP - iop) {

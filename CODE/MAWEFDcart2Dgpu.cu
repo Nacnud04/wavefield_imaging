@@ -4,9 +4,10 @@
 
 extern "C" {
     #include <rsf.h>
+    #include <rsf_su.h>
 }
 
-#include "fdutil_old.c"
+#include "fdutil.c"
 
 #include "cart_kernels.cu"
 
@@ -28,9 +29,6 @@ static void sf_check_gpu_error (const char *msg) {
 // entry
 int main(int argc, char*argv[]) {
 
-    // time utilities
-    struct timespec currentTime;
-
     // define input variables from sconstruct
     bool fsrf, snap, bnds, dabc;
     int jsnap, jdata;
@@ -49,7 +47,7 @@ int main(int argc, char*argv[]) {
 
     // define dimension sizes
     int nt, nx, nz, ns, nr, ncs, nb;
-    int it, ix, iz;
+    int it;
     float dt, dx, dz;
     float ot, ox, oz;
 
@@ -66,8 +64,6 @@ int main(int argc, char*argv[]) {
 
     // linear interpolation of weights and indicies
     lint2d cs, cr;
-
-    int nbell; // gaussian bell dims
 
     sf_init(argc, argv);
 

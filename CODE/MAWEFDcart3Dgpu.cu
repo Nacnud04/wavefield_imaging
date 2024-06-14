@@ -3,9 +3,10 @@
 
 extern "C" {
     #include <rsf.h>
+    #include <rsf_su.h>
 }
 
-#include "fdutil_old.c"
+#include "fdutil.c"
 #include "cart_kernels.cu"
 
 #define MIN(x, y) (((x) < (y)) ? (x): (y))
@@ -39,7 +40,7 @@ int main(int argc, char*argv[]) {
 		
     // define dimension sizes
     int nt, nz, ny, nx, ns, nr, ncs, nb;
-    int it, ix, iy, iz;
+    int it;
     float dt, dz, dy, dx;
 
     // FDM structure
@@ -277,28 +278,28 @@ int main(int argc, char*argv[]) {
 
     float d;
     for (int ix=0; ix<fdm->nxpad; ix++) {
-	for (int iy=0; iy<fdm->nypad; iy++) {
-            d = h_vel[iy*fdm->nxpad*fdm->nzpad + NOP*fdm->nxpad + ix] * (dt / dz);
-            one_bzl[iy*fdm->nxpad+ix] = (1-d)/(1+d);
-            d = h_vel[iy*fdm->nxpad*fdm->nzpad + (fdm->nzpad-NOP-1)*fdm->nxpad + ix] * (dt / dz);
-            one_bzh[iy*fdm->nxpad+ix] = (1-d)/(1+d);
-	}
+        for (int iy=0; iy<fdm->nypad; iy++) {
+                d = h_vel[iy*fdm->nxpad*fdm->nzpad + NOP*fdm->nxpad + ix] * (dt / dz);
+                one_bzl[iy*fdm->nxpad+ix] = (1-d)/(1+d);
+                d = h_vel[iy*fdm->nxpad*fdm->nzpad + (fdm->nzpad-NOP-1)*fdm->nxpad + ix] * (dt / dz);
+                one_bzh[iy*fdm->nxpad+ix] = (1-d)/(1+d);
+        }
     }
     for (int iz=0; iz<fdm->nzpad; iz++) {
-	for (int iy=0; iy<fdm->nypad; iy++) {
-            d = h_vel[iy*fdm->nxpad*fdm->nzpad + iz*fdm->nxpad + NOP] * (dt / dx);
-            one_bxl[iy*fdm->nzpad+iz] = (1-d)/(1+d);
-            d = h_vel[iy*fdm->nxpad*fdm->nzpad + iz*fdm->nxpad + fdm->nxpad-NOP-1] * (dt / dx);
-            one_bxh[iy*fdm->nzpad+iz] = (1-d)/(1+d);
-	}
+        for (int iy=0; iy<fdm->nypad; iy++) {
+                d = h_vel[iy*fdm->nxpad*fdm->nzpad + iz*fdm->nxpad + NOP] * (dt / dx);
+                one_bxl[iy*fdm->nzpad+iz] = (1-d)/(1+d);
+                d = h_vel[iy*fdm->nxpad*fdm->nzpad + iz*fdm->nxpad + fdm->nxpad-NOP-1] * (dt / dx);
+                one_bxh[iy*fdm->nzpad+iz] = (1-d)/(1+d);
+        }
     }
     for (int iz=0; iz<fdm->nzpad; iz++) {
-	for (int ix=0; ix<fdm->nxpad; ix++) {
-	    d = h_vel[NOP*fdm->nxpad*fdm->nzpad + iz*fdm->nxpad + ix] * (dt / dy);
-	    one_byl[iz*fdm->nxpad+ix] = (1-d)/(1+d);
-	    d = h_vel[(fdm->nypad-NOP-1)*fdm->nxpad*fdm->nzpad + iz*fdm->nxpad + ix] * (dt / dy);
-	    one_byh[iz*fdm->nxpad+iz] = (1-d)/(1+d);
-	}
+        for (int ix=0; ix<fdm->nxpad; ix++) {
+            d = h_vel[NOP*fdm->nxpad*fdm->nzpad + iz*fdm->nxpad + ix] * (dt / dy);
+            one_byl[iz*fdm->nxpad+ix] = (1-d)/(1+d);
+            d = h_vel[(fdm->nypad-NOP-1)*fdm->nxpad*fdm->nzpad + iz*fdm->nxpad + ix] * (dt / dy);
+            one_byh[iz*fdm->nxpad+iz] = (1-d)/(1+d);
+        }
     }
 
     float *d_bzl, *d_bzh, *d_bxl, *d_bxh, *d_byl, *d_byh;
@@ -386,7 +387,7 @@ int main(int argc, char*argv[]) {
 	if(verb) fprintf(stderr,"\n");
     sf_warning("total number of time steps: %d", nt);
 
-	int itr = 0; int wfnum = 0;
+	int itr = 0;
 	for (it=0; it<nt; it++) {
 	    
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);

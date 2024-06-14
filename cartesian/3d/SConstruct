@@ -1,4 +1,5 @@
 from rsf.proj import * # set up generic proj files
+import geom
 import sys, os # import madagascar path
 
 sys.path.append('/home/byrne/WORK/CODE')
@@ -53,6 +54,7 @@ rpar['uz'] = par['ux']
 
 # generate source position
 zsou=par['oz']+(par['nz']-1)*par['dz']/4.
+zsou2 = par['oz']+3*(par['nz']-1)*par['dz']/4.
 xsou=par['ox']+(par['nx']-1)*par['dx']/2.
 ysou=par['oy']+(par['ny']-1)*par['dy']/2.
 
@@ -60,7 +62,7 @@ ysou=par['oy']+(par['ny']-1)*par['dy']/2.
 fdmod.point3d('ss-3d', xsou, ysou, zsou, par)
 
 # gen receiver array
-fdmod.point3d('rr-3d', xsou, ysou-0.01, zsou, par)
+fdmod.horizontal3d('rr-3d', zsou2, par)
 
 # gen wavelet
 awe.wavelet('wav', par['frq'], '', par)
@@ -68,7 +70,7 @@ awe.wavelet('wav', par['frq'], '', par)
 # run acoustic model
 awe.awefd3d('dat', 'wfl', 'wav',  'vp', 'vp', 'ss-3d', 'rr-3d', '', par)
 
-Result('dat', f'sfwindow | sfgraph')
+Result('dat', f'sfwindow n1={par["ny"]} f1={(par["nx"] * par["ny"])//2} | sfgrey')
 
 Result('wfl', f'window n2=1 f2={par["ny"]/2} | sfgrey gainpanel=a')
 
