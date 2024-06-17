@@ -62,8 +62,6 @@ int main(int argc, char*argv[]) {
     // linear interpolation of weights and indicies
     lint3d cs, cr;
 
-    int nbell; // gaussian bell dims
-
     sf_init(argc, argv);
 
     // exec flags
@@ -98,6 +96,7 @@ int main(int argc, char*argv[]) {
 
     as  = sf_iaxa(Fsou,2); sf_setlabel(as ,"s" ); // sources
     ar  = sf_iaxa(Frec,2); sf_setlabel(ar ,"r" ); // receivers
+
     sf_axis ar_3, as_3;
     ar_3 = sf_iaxa(Frec, 3);
     as_3 = sf_iaxa(Fsou, 3);
@@ -131,15 +130,11 @@ int main(int argc, char*argv[]) {
     int nrapad=fdm->nxpad; int nthpad=fdm->nzpad; int nphpad=fdm->nypad;
     sf_warning("nrapad: %d | nthpad: %d | nphpad: %d", nrapad, nthpad, nphpad);
     h_vel = (float*)malloc(nrapad * nthpad * nphpad * sizeof(float));
-
-    // define bell size
-    if(! sf_getint("nbell",&nbell)) nbell=5;  //bell size
-    sf_warning("nbell=%d",nbell);
     
     // how often to extract receiver data?
     if(! sf_getint("jdata",&jdata)) jdata=1;
     int nsmp = (nt/jdata);
-    sf_warning("extracting recevier %d times", nsmp);
+    sf_warning("reading receiver data %d times", nsmp);
 
     sf_warning("nb: %d", nb);
     
@@ -324,8 +319,6 @@ int main(int argc, char*argv[]) {
     // ITERATE OVER SHOTS
     // CURRENTLY ONLY 1 TO SET ALL SHOTS AT ONCE
     for (int isrc = 0; isrc < 1; isrc ++) {
-
-	sf_warning("Modeling shot %d", isrc+1);
 
 	// read source and receiver coordinates
 	// in the pt3d struct there is X, Y and Z. The same convention is

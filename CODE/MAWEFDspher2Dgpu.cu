@@ -90,6 +90,7 @@ int main(int argc, char*argv[]) {
 
     as  = sf_iaxa(Fsou,2); sf_setlabel(as ,"s" ); // sources
     ar  = sf_iaxa(Frec,2); sf_setlabel(ar ,"r" ); // receivers
+
     sf_axis ar_3, as_3;
     ar_3 = sf_iaxa(Frec, 3);
     as_3 = sf_iaxa(Fsou, 3);
@@ -109,11 +110,10 @@ int main(int argc, char*argv[]) {
 
     // how often to extract receiver data?
     if(! sf_getint("jdata",&jdata)) jdata=1;
-    sf_warning("extracting recevier data every %d times", jdata);
 
     // how many time steps in each extraction?
     int nsmp = (nt/jdata);
-    sf_warning("therefore there are %d timesteps between extraction", nsmp);
+    sf_warning("reading receiver data %d times", nsmp);
 
     if(! sf_getint("jdata",&jdata)) jdata=1;    // extract receiver data every jdata time steps
 
@@ -254,15 +254,15 @@ int main(int argc, char*argv[]) {
     float d;
     for (int ira=0; ira<nrapad; ira++) {
         d = h_vel[NOP * nrapad + ira] * (dt / dth);
-	one_bthl[ira] = (1-d)/(1+d);
-	d = h_vel[(nthpad-NOP-1)*nrapad + ira] * (dt / dth);
-	one_bthh[ira] = (1-d)/(1+d);
+        one_bthl[ira] = (1-d)/(1+d);
+        d = h_vel[(nthpad-NOP-1)*nrapad + ira] * (dt / dth);
+        one_bthh[ira] = (1-d)/(1+d);
     }
     for (int ith=0; ith<nthpad; ith++) {
-	d = h_vel[ith * nrapad + NOP] * (dt / dra);
-	one_bral[ith] = (1-d)/(1+d);
-	d = h_vel[ith * nrapad + nrapad-NOP-1] * (dt / dra);
-	one_brah[ith] = (1-d)/(1+d);
+        d = h_vel[ith * nrapad + NOP] * (dt / dra);
+        one_bral[ith] = (1-d)/(1+d);
+        d = h_vel[ith * nrapad + nrapad-NOP-1] * (dt / dra);
+        one_brah[ith] = (1-d)/(1+d);
     }
 
     float *d_bthl, *d_bthh, *d_bral, *d_brah;
@@ -277,8 +277,6 @@ int main(int argc, char*argv[]) {
 
     // ITERATE OVER SHOTS
     for (int isrc = 0; isrc < 1; isrc ++) {
-
-	sf_warning("Modeling shot %d", isrc+1);
 
 	// read source and receiver coordinates
 	// in the pt struct there is X and Z. The same convention is
@@ -373,7 +371,7 @@ int main(int argc, char*argv[]) {
 	    spongeKernel_2D<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nthpad, nb);
 	    sf_check_gpu_error("sponge Kernel");
 	    spongeKernel_2D<<<dimGrid2, dimBlock2>>>(d_ppo, nrapad, nthpad, nb);
-            sf_check_gpu_error("sponge Kernel");
+        sf_check_gpu_error("sponge Kernel");
 
 	    // FREE SURFACE
         if (fsrf) {
@@ -383,21 +381,21 @@ int main(int argc, char*argv[]) {
 
 	    if (snap && it%jsnap==0) {
 
-		cudaMemcpy(h_po, d_po, nrapad*nthpad*sizeof(float), cudaMemcpyDefault);
+            cudaMemcpy(h_po, d_po, nrapad*nthpad*sizeof(float), cudaMemcpyDefault);
 
-		for (int ra = 0; ra < nrapad; ra++) {
-		    for (int th = 0; th < nthpad; th++) {
-			po[ra][th] = h_po[th*nrapad + ra];
-		    }
-		}	
+            for (int ra = 0; ra < nrapad; ra++) {
+                for (int th = 0; th < nthpad; th++) {
+                    po[ra][th] = h_po[th*nrapad + ra];
+                }
+            }	
 
-		if (bnds) {
-		    sf_floatwrite(po[0], nthpad*nrapad, Fwfl);
-		}
-		else {
-	        cut2d(po, oslice, fdm, ath, ara);
-		    sf_floatwrite(oslice[0], sf_n(ath)*sf_n(ara), Fwfl);
-		}
+            if (bnds) {
+                sf_floatwrite(po[0], nthpad*nrapad, Fwfl);
+            }
+            else {
+                cut2d(po, oslice, fdm, ath, ara);
+                sf_floatwrite(oslice[0], sf_n(ath)*sf_n(ara), Fwfl);
+            }
 	    }
 	    
 	    // EXTRACT TO RECEIVERS

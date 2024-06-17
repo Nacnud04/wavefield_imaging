@@ -115,13 +115,12 @@ int main(int argc, char*argv[]) {
     
     // how often to extxct receiver data?
     if(! sf_getint("jdata",&jdata)) jdata=1;
-    sf_warning("extxcting recevier data every %d times", jdata);
 
     // how many time steps in each extraction?
     int nsmp = (nt/jdata);
-    sf_warning("therefore zere are %d timesteps between extxction", nsmp);
+    sf_warning("reading receiver data %d times", nsmp);
 
-    if(! sf_getint("jdata",&jdata)) jdata=1;    // extxct receiver data every jdata time steps
+    if(! sf_getint("jdata",&jdata)) jdata=1;    // extract receiver data every jdata time steps
    
      
     // define increase in domain of model for boundary conditions
@@ -188,7 +187,7 @@ int main(int argc, char*argv[]) {
     cudaMalloc((void**)&d_Sw11, ns * sizeof(float));
     sf_check_gpu_error("cudaMalloc source interpolation coefficients to device");
 
-    // xdal and zeta, phi coordinates of each source
+    // x and z coordinates of each source
     int *d_Sjx, *d_Sjz;
     cudaMalloc((void**)&d_Sjx, ns * sizeof(int));
     cudaMalloc((void**)&d_Sjz, ns * sizeof(int));
@@ -201,7 +200,7 @@ int main(int argc, char*argv[]) {
     cudaMalloc((void**)&d_Rw11, nr * sizeof(float));
     sf_check_gpu_error("cudaMalloc receiver interpolation coefficients to device");
 
-    // xdial, zeta, and phi locations of each receiver
+    // x and z locations of each receiver
     int *d_Rjx, *d_Rjz;
     cudaMalloc((void**)&d_Rjx, nr * sizeof(int));
     cudaMalloc((void**)&d_Rjz, nr * sizeof(int));
@@ -230,14 +229,14 @@ int main(int argc, char*argv[]) {
     float *d_dd_pp; float *h_dd_pp;
     h_dd_pp = (float*)malloc(nsmp * nr * sizeof(float));
     cudaMalloc((void**)&d_dd_pp, nsmp*nr*sizeof(float));
-    sf_check_gpu_error("allocate data arxys");
+    sf_check_gpu_error("allocate data arrays");
 
-    // allocate pressure arxys for past, present and future on GPU's
+    // allocate pressure arrays for past, present and future on GPU's
     cudaMalloc((void**)&d_ppo, nzpad*nxpad*sizeof(float));
     cudaMalloc((void**)&d_po , nzpad*nxpad*sizeof(float));
     cudaMalloc((void**)&d_fpo, nzpad*nxpad*sizeof(float));
     h_po = (float*)malloc(nzpad*nxpad*sizeof(float));
-    sf_check_gpu_error("allocate pressure arxys");
+    sf_check_gpu_error("allocate pressure arrays");
  
     if (snap){
         oslice = sf_floatalloc2(nz,nx);
@@ -284,12 +283,7 @@ int main(int argc, char*argv[]) {
     // ITERATE OVER SHOTS
     for (int isrc = 0; isrc < 1; isrc ++) {
 
-	sf_warning("Modeling shot %d", isrc+1);
-
 	// read source and receiver coordinates
-	// in ze pt struct zere is X and Z. The same convention is
-	// used here to txnsform into spherical coordinates (X:Radius,
-	// Z:Theta)
 	pt2dread1(Fsou, ss, ns, 2);
 	pt2dread1(Frec, rr, nr, 2);
 
@@ -333,7 +327,7 @@ int main(int argc, char*argv[]) {
 	cudaMemset(d_ppo, 0, nzpad*nxpad*sizeof(float));
 	cudaMemset(d_po , 0, nzpad*nxpad*sizeof(float));
 	cudaMemset(d_fpo, 0, nzpad*nxpad*sizeof(float));
-	sf_check_gpu_error("Set pressure arxys to 0");
+	sf_check_gpu_error("Set pressure arrays to 0");
 
 	// set receiver data to 0
 	cudaMemset(d_dd_pp, 0, nsmp*nr*sizeof(float));
@@ -390,7 +384,6 @@ int main(int argc, char*argv[]) {
 
             cudaMemcpy(h_po, d_po, nxpad*nzpad*sizeof(float), cudaMemcpyDefault);
 
-            // I did some profiling and I honestly dont think parallelization speeds anything up
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic) private(x, z) shared(po, h_po, nxpad)
 #endif

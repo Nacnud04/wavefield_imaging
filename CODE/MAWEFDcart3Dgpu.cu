@@ -56,8 +56,6 @@ int main(int argc, char*argv[]) {
     // linear interpolation weights/indicies
     lint3d cs, cr;
 
-    int nbell; // gaussian bell
-
     sf_init(argc, argv);
 
     // exec flags
@@ -109,47 +107,39 @@ int main(int argc, char*argv[]) {
     sf_warning("nx:%d|ny:%d|nz:%d|nt:%d|ns:%d|nr:%d",nx,ny,nz,nt,ns,nr);
     sf_warning("dx:%f|dy:%f|dz:%f|dt:%f", dx, dy, dz, dt);
     
-    // define bell size
-    if(! sf_getint("nbell",&nbell)) nbell=5;  //bell size
-    sf_warning("nbell=%d",nbell);
-    
     // how often to extract receiver data?
     if(! sf_getint("jdata",&jdata)) jdata=1;
     
     if(snap) {
 
         if(! sf_getint("jsnap",&jsnap)) jsnap=nt;       // save wavefield every jsnap time steps 
-    
-        sf_warning("extracting recevier data every %d timesteps", jsnap);
         
-	acz = sf_maxa(nz, sf_o(az), dz);
-    acx = sf_maxa(nx, sf_o(ax), dx);
-	acy = sf_maxa(ny, sf_o(ay), dy);
+        acz = sf_maxa(nz, sf_o(az), dz);
+        acx = sf_maxa(nx, sf_o(ax), dx);
+        acy = sf_maxa(ny, sf_o(ay), dy);
 
-	int ntsnap;
+        int ntsnap;
         ntsnap=0;
         for(it=0; it<nt; it++) {
             if(it%jsnap==0) ntsnap++;
         }
-        
-	sf_warning("therefore there are %d extractions", ntsnap);
-   
+    
         sf_setn(awt,ntsnap);
         sf_setd(awt,dt*jsnap);
 
-	sf_oaxa(Fwfl, acz, 1);
-	sf_oaxa(Fwfl, acx, 2);
-	sf_oaxa(Fwfl, acy, 3);
+        sf_oaxa(Fwfl, acz, 1);
+        sf_oaxa(Fwfl, acx, 2);
+        sf_oaxa(Fwfl, acy, 3);
 
-	sf_oaxa(Fwfl, awt, 4);
+        sf_oaxa(Fwfl, awt, 4);
 
     }
     
     // how many time steps in each extraction?
-    int nsmp = (nt/jdata);
     if(! sf_getint("jdata",&jdata)) jdata=1;    // extract receiver data every jdata time steps 
+    int nsmp = (nt/jdata);
+    sf_warning("reading receiver data %d times", nsmp);
 
-    
     // define increase in domain of model for boundary conditions
     if( !sf_getint("nb",&nb) || nb<NOP) nb=NOP;
     
@@ -319,8 +309,6 @@ int main(int argc, char*argv[]) {
     // ITERATE OVER SHOTS
     for (int isrc = 0; isrc < 1; isrc++){
 
-        sf_warning("Modeling shot %d", isrc+1);
-
 	pt3dread1(Fsou, ss, ns, 3); // read source coords
 	pt3dread1(Frec, rr, nr, 3); // read receiver coords
 	
@@ -431,17 +419,17 @@ int main(int argc, char*argv[]) {
 	    spongeKernel_3D<<<dimGrid3, dimBlock3>>>(d_ppo, fdm->nxpad, fdm->nypad, fdm->nzpad, fdm->nb);
         sf_check_gpu_error("sponge Kernel");
 	    
-	    // MOVE DATA TO GPU
+	    // EXTRACT RECEIVER DATA
 	    if (it % jdata == 0) {
-		itr += 1;
-		dim3 dimGrid_extract(MIN(nr, ceil(nr/1024.0f)), 1, 1);
-		dim3 dimBlock_extract(MIN(nr, 1024), 1, 1);
-		extract_3D<<<dimGrid_extract, dimBlock_extract>>>(d_dd_pp, 
-                                        itr, nr, fdm->nxpad, fdm->nypad, fdm->nzpad,
-									  d_po, d_Rjx, d_Rjy, d_Rjz,
-									  d_Rw000, d_Rw001, d_Rw010, d_Rw011,
-									  d_Rw100, d_Rw101, d_Rw110, d_Rw111);
-		sf_check_gpu_error("lint3d_extract_gpu Kernel");
+            itr += 1;
+            dim3 dimGrid_extract(MIN(nr, ceil(nr/1024.0f)), 1, 1);
+            dim3 dimBlock_extract(MIN(nr, 1024), 1, 1);
+            extract_3D<<<dimGrid_extract, dimBlock_extract>>>(d_dd_pp, 
+                                            itr, nr, fdm->nxpad, fdm->nypad, fdm->nzpad,
+                                        d_po, d_Rjx, d_Rjy, d_Rjz,
+                                        d_Rw000, d_Rw001, d_Rw010, d_Rw011,
+                                        d_Rw100, d_Rw101, d_Rw110, d_Rw111);
+            sf_check_gpu_error("extract_3D Kernel");
 	    }
 
 	    // EXTRACT WAVEFIELD EVERY JSNAP STEPS
