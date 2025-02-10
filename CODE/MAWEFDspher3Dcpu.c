@@ -80,9 +80,6 @@ int main(int argc, char*argv[]) {
 
     as  = sf_iaxa(Fsou,2); sf_setlabel(as ,"s" ); // sources
     ar  = sf_iaxa(Frec,2); sf_setlabel(ar ,"r" ); // receivers
-    sf_axis ar_3, as_3;
-    ar_3 = sf_iaxa(Frec, 3);
-    as_3 = sf_iaxa(Fsou, 3);
 
     awt = at;
 
@@ -91,8 +88,8 @@ int main(int argc, char*argv[]) {
     nth = sf_n(ath); dth = sf_d(ath);
     nph = sf_n(aph); dph = sf_d(aph);
     
-    ns  = sf_n(as_3) * sf_n(as);
-    nr  = sf_n(ar_3) * sf_n(ar);
+    ns  = sf_n(as);
+    nr  = sf_n(ar);
 
     sf_warning("nra:%d|nth:%d|nph:%d|nt:%d|ns:%d|nr:%d",nra,nth,nph,nt,ns,nr);
     sf_warning("dra:%f|dth:%f|dph:%f|dt:%f", dra, dth, dph, dt);
@@ -123,12 +120,13 @@ int main(int argc, char*argv[]) {
     
 
     // EXTRACTION RATES ------------------------------------------------------------------
+
     if(! sf_getint("jdata",&jdata)) jdata=1;
     int nsmp = (nt/jdata);
     sf_warning("extracting recevier %d times", nsmp);
 
-
     // DEFINE WAVEFIELD OUTPUT ------------------------------------------------------------
+
     if(snap) {
 
         if(! sf_getint("jsnap",&jsnap)) jsnap=nt; // save wavefield every nt timesteps
@@ -170,6 +168,7 @@ int main(int argc, char*argv[]) {
 
 
     // READ IN SOURCE WAVELET -------------------------------------------------------------------
+
     ncs = 1;
     float *ww = NULL;
     ww = sf_floatalloc(nt); // allocate var for ncs dims over nt time
@@ -196,6 +195,7 @@ int main(int argc, char*argv[]) {
 
 
     // CREATE DATA ARRAYS --------------------------------------------------------------------
+
     float *h_dd_pp;
     h_dd_pp = (float*)malloc(nsmp * nr * sizeof(float));
 
@@ -206,6 +206,7 @@ int main(int argc, char*argv[]) {
 
 
     // SET UP SOURCE COORDS AND FDM ---------------------------------------------------------
+
     pt3d *ss = NULL;
     ss = (pt3d*) sf_alloc(ns, sizeof(*ss)); // allocate memory
 
@@ -214,6 +215,7 @@ int main(int argc, char*argv[]) {
 
 
     // SET UP RECEIVER COORDS AND FDM -------------------------------------------------------
+
     pt3d *rr = NULL;
     rr = (pt3d*) sf_alloc(nr, sizeof(*rr));
 
@@ -222,6 +224,7 @@ int main(int argc, char*argv[]) {
 
 
     // SET UP ONE WAY BOUNDARY CONDITIONS -----------------------------------------------------
+
     sf_warning("Defining one way BCs...");
 
     float *one_bthl = sf_floatalloc(nrapad * nphpad);
@@ -295,7 +298,7 @@ int main(int argc, char*argv[]) {
 
     // TIME LOOP -----------------------------------------------------------------------------
     fprintf(stderr,"total num of time steps: %d \n", nt);
-	for (it=0; it<801; it++) {
+	for (it=0; it<nt; it++) {
 
         fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 

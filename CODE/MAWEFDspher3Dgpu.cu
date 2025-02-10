@@ -97,9 +97,6 @@ int main(int argc, char*argv[]) {
     as  = sf_iaxa(Fsou,2); sf_setlabel(as ,"s" ); // sources
     ar  = sf_iaxa(Frec,2); sf_setlabel(ar ,"r" ); // receivers
 
-    sf_axis as_3;
-    as_3 = sf_iaxa(Fsou, 3);
-
     awt = at;
 
     nt  = sf_n(at ); dt  = sf_d(at );
@@ -107,7 +104,7 @@ int main(int argc, char*argv[]) {
     nth = sf_n(ath); dth = sf_d(ath);
     nph = sf_n(aph); dph = sf_d(aph);
     
-    ns  = sf_n(as_3) * sf_n(as);
+    ns  = sf_n(as);
     nr  = sf_n(ar);
 
     sf_warning("nra:%d|nth:%d|nph:%d|nt:%d|ns:%d|nr:%d",nra,nth,nph,nt,ns,nr);
@@ -233,10 +230,6 @@ int main(int argc, char*argv[]) {
 
     // allocate memory to import velocity data
     float *tt1 = (float*)malloc(nra * nth * nph * sizeof(float));
-
-    // expand dimensions to allow for absorbing boundary conditions
-    sf_warning("Expanding dimensions to allocate for bound. conditions");
-    sf_warning("nrapad: %d | nthpad: %d | nphpad: %d", nrapad, nthpad, nphpad);
     
     // read in velocity data & expand domain
     sf_floatread(tt1, nra*nth*nph, Fvel);
@@ -326,29 +319,10 @@ int main(int argc, char*argv[]) {
 	pt3dread1(Fsou, ss, ns, 3);
 	pt3dread1(Frec, rr, nr, 3);
 
-	// set source on GPU
-	sf_warning("Source location: ");
-	//printpt3d(*ss);
-
-    sf_warning("Source 1 z: %lf", ss[0].z);
-    sf_warning("Source %d z: %lf", ns-1, ss[ns-1].z);
-    sf_warning("Min >=: %f", fdm->ozpad); 
-	sf_warning("Max < : %f", fdm->ozpad + (fdm->nzpad-1)*fdm->dz);
-    sf_warning("Source 1 x: %lf", ss[0].x);
-    sf_warning("Source %d x: %lf", ns-1, ss[ns-1].x);
-    sf_warning("Min >=: %f", fdm->oxpad); 
-	sf_warning("Max < : %f", fdm->oxpad + (fdm->nxpad-1)*fdm->dx);
-    sf_warning("Source 1 y: %lf", ss[0].y);
-    sf_warning("Source %d y: %lf", ns-1, ss[ns-1].y);
-    sf_warning("Min >=: %f", fdm->oypad); 
-	sf_warning("Max < : %f", fdm->oypad + (fdm->nypad-1)*fdm->dy);
+	// SET SOURCES ON GPU
 
 	// perform 3d linear interpolation on source
-    sf_warning("Source Count: %d", ns);
 	cs = lint3d_make(ns, ss, fdm);
-
-	sf_warning("Source interp coeffs:");
-    sf_warning("000:%f | 001:%f | 010:%f | 011:%f | 100:%f | 101:%f | 110:%f | 111:%f", cs->w000[0], cs->w001[0], cs->w010[0], cs->w011[0], cs->w100[0], cs->w101[0], cs->w101[0], cs->w111[0]);
 
     cudaMemcpy(d_Sw000, cs->w000, ns * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_Sw001, cs->w001, ns * sizeof(float), cudaMemcpyHostToDevice);
@@ -365,29 +339,8 @@ int main(int argc, char*argv[]) {
 	cudaMemcpy(d_Sjph, cs->jy, ns * sizeof(int), cudaMemcpyHostToDevice);
 	sf_check_gpu_error("copy source coords to device");
 
-    sf_warning("Source 0 idz: %d", cs->jz[0]);
-    sf_warning("Source 0 idx: %d", cs->jx[0]);
-    sf_warning("Source 0 idy: %d", cs->jy[0]);
-    sf_warning("Source %d idz: %d", ns-1, cs->jz[ns-1]);
-    sf_warning("Source %d idx: %d", ns-1, cs->jx[ns-1]);
-    sf_warning("Source %d idy: %d", ns-1, cs->jy[ns-1]);
-
 	// SET RECEIVERS ON THE GPU
-	sf_warning("Receiver Count: %d", nr);
 	cr = lint3d_make(nr, rr, fdm);
-
-    sf_warning("Receiver 0 z: %lf", rr[0].z);
-    sf_warning("Receiver 0 x: %lf", rr[0].x);
-    sf_warning("Receiver 0 y: %lf", rr[0].y);
-    sf_warning("Receiver 0 idz: %d", cr->jz[0]);
-    sf_warning("Receiver 0 idx: %d", cr->jx[0]);
-    sf_warning("Receiver 0 idy: %d", cr->jy[0]);
-    sf_warning("Receiver %d z: %lf", nr-1, rr[nr-1].z);
-    sf_warning("Receiver %d x: %lf", nr-1, rr[nr-1].x);
-    sf_warning("Receiver %d y: %lf", nr-1, rr[nr-1].y);
-    sf_warning("Receiver %d idz: %d", nr-1, cr->jz[nr-1]);
-    sf_warning("Receiver %d idx: %d", nr-1, cr->jx[nr-1]);
-    sf_warning("Receiver %d idy: %d", nr-1, cr->jy[nr-1]);
 
 	cudaMemcpy(d_Rw000, cr->w000, nr * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_Rw001, cr->w001, nr * sizeof(float), cudaMemcpyHostToDevice);
@@ -402,7 +355,6 @@ int main(int argc, char*argv[]) {
     cudaMemcpy(d_Rjth, cr->jz, nr * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_Rjra, cr->jx, nr * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_Rjph, cr->jy, nr * sizeof(int), cudaMemcpyHostToDevice);
-    sf_warning("receiver 1 weights 000:%f | 001:%f | 010:%f | 011:%f | 100:%f | 101:%f | 110:%f | 111:%f", cr->w000[0], cr->w001[0], cr->w010[0], cr->w011[0], cr->w100[0], cr->w101[0], cr->w101[0], cr->w111[0]);
     sf_check_gpu_error("copy receiver coords to device");
 
 
@@ -509,7 +461,8 @@ int main(int argc, char*argv[]) {
 
     sf_floatwrite(h_dd_pp, nsmp*nr, Fdat);
 
-    // FREE ALLOCATED MEMORY
+    // FREE GPU MEMORY
+
     cudaFree(d_ww);
 
     cudaFree(d_Sw000); cudaFree(d_Sw001); cudaFree(d_Sw010); cudaFree(d_Sw011);
