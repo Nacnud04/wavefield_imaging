@@ -55,7 +55,7 @@ par = {
     # model dimensions
     'nx':400, 'ox':-0.05, 'dx':0.00025,  'lx':'x', 'ux':'km',
     'ny':400, 'oy':-0.05, 'dy':0.00025,  'ly':'y', 'uy':'km',
-    'nz':400, 'oz':0, 'dz':0.00025,  'lz':'z', 'uz':'km',
+    'nz':400, 'oz':0, 'dz':25,  'lz':'z', 'uz':'km',
     # time params
     'kt':100, 'frq':800,
     'nt':1601,'ot':0, 'dt':0.000025,  'lt':'t', 'ut':'s',

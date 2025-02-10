@@ -97,8 +97,7 @@ int main(int argc, char*argv[]) {
     as  = sf_iaxa(Fsou,2); sf_setlabel(as ,"s" ); // sources
     ar  = sf_iaxa(Frec,2); sf_setlabel(ar ,"r" ); // receivers
 
-    sf_axis ar_3, as_3;
-    ar_3 = sf_iaxa(Frec, 3);
+    sf_axis as_3;
     as_3 = sf_iaxa(Fsou, 3);
 
     awt = at;
@@ -109,7 +108,7 @@ int main(int argc, char*argv[]) {
     nph = sf_n(aph); dph = sf_d(aph);
     
     ns  = sf_n(as_3) * sf_n(as);
-    nr  = sf_n(ar_3) * sf_n(ar);
+    nr  = sf_n(ar);
 
     sf_warning("nra:%d|nth:%d|nph:%d|nt:%d|ns:%d|nr:%d",nra,nth,nph,nt,ns,nr);
     sf_warning("dra:%f|dth:%f|dph:%f|dt:%f", dra, dth, dph, dt);
@@ -250,7 +249,7 @@ int main(int argc, char*argv[]) {
     // CREATE DATA ARRAYS FOR RECEIVERS
     float *d_dd_pp; float *h_dd_pp;
     h_dd_pp = (float*)malloc(nsmp * nr * sizeof(float));
-    cudaMalloc((void**)&d_dd_pp, nsmp*nr*sizeof(float));
+    cudaMalloc((void**)&d_dd_pp, nsmp * nr * sizeof(float));
     sf_check_gpu_error("allocate data arrays");
 
     // allocate pressure arrays for past, present and future on GPU's

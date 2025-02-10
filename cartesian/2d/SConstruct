@@ -62,6 +62,8 @@ zsou = par['oz']+(par['nz']-1)*par['dz']/4.
 # gen point source
 fdmod.point('ss-2d', xsou, zsou, par)
 
+par = awe.param(par)
+
 awe.awefd2d('dat', 'wfl', 'wav',  'vp', None, 'ss-2d', 'rr-2d', '', par)
 
 Result('dat', 'window | transp | grey')

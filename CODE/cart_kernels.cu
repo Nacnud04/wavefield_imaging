@@ -232,7 +232,7 @@ __global__ void solve_3D(float *d_fpo, float *d_po, float *d_ppo, float *d_vel,
 	if (ix < nxpad && iy < nypad && iz < nzpad){
 		
 		int globalAddr = iy * nzpad * nxpad + iz * nxpad + ix;
-                int velAddr = iy * nzpad * nzpad + ix * nzpad + iz;
+        int velAddr = iy * nzpad * nzpad + ix * nzpad + iz;
 		float pxx, pyy, pzz;
 		float laplace;
 

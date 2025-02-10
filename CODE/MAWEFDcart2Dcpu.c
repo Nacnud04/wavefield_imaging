@@ -218,6 +218,13 @@ main(int argc, char** argv)
   fdcoef_d2 = compute_fdcoef(nop,dz,dx,optfd,SECOND_DERIV);
   fdcoef_d1 = compute_fdcoef(nop,dz,dx,optfd,FIRST_DERIV);
 
+  float* cz = &fdcoef_d2[0];
+  float* cx = &fdcoef_d2[nop];
+  sf_warning("fdcoef_d2 cz @ 0: %f", cz[0]);
+  sf_warning("fdcoef_d2 cx @ 0: %f", cx[0]);
+  sf_warning("fdcoef_d2 cz @ 1: %f", cz[1]);
+  sf_warning("fdcoef_d2 cx @ 1: %f", cx[1]);
+
   /* Allocate memories */
   if (expl) ws = sf_floatalloc(1);
   else      ws = sf_floatalloc(ns);

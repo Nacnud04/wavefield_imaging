@@ -38,6 +38,7 @@ if machine=='gpu1' or machine=='gpu3':
         AWEFDcart3Dgpu
         AWEFDspher2Dgpu
         AWEFDspher3Dgpu
+        DYNAWEFDcart2Dgpu
         '''
     for prog in Split(targetsCUDA):
         cflags  = '-prec-div=true -arch=sm_60 --x=cu'

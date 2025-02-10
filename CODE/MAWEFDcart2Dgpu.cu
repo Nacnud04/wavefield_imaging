@@ -135,12 +135,7 @@ int main(int argc, char*argv[]) {
         acz = sf_maxa(nz,oz,dz); 
         acx = sf_maxa(nx,ox,dx); 
     
-        int ntsnap = 0;
-        for (it=0; it<nt; it++) {
-            if (it%jsnap==0) ntsnap++;
-        }
-
-        sf_setn(at,ntsnap);
+        sf_setn(at, (nt-1)/jsnap+1);
         sf_setd(at,dt*jsnap);
         
         sf_oaxa(Fwfl,acz,1);
@@ -162,16 +157,10 @@ int main(int argc, char*argv[]) {
     ww = sf_floatalloc(nt); // allocate var for ncs dims over nt time
     sf_floatread(ww, nt, Fwav); // read wavelet into allocated mem
 
-    float *h_ww;
-    h_ww = (float*)malloc(nt*sizeof(float));
-    for (int t = 0; t < nt; t++) {
-        h_ww[t] = ww[t];
-    }
-
     float *d_ww;
-    cudaMalloc((void**)&d_ww, 1*ncs*nt*sizeof(float));
+    cudaMalloc((void**)&d_ww, ncs*nt*sizeof(float));
     sf_check_gpu_error("cudaMalloc source wavelet to device");
-    cudaMemcpy(d_ww, h_ww, 1*ncs*nt*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_ww, ww, ncs*nt*sizeof(float), cudaMemcpyHostToDevice);
 
     // SET UP SOURCE / RECEIVER COORDS
     pt2d *ss=NULL;
@@ -374,7 +363,7 @@ int main(int argc, char*argv[]) {
 	    spongeKernel_2D<<<dimGrid2, dimBlock2>>>(d_po, nxpad, nzpad, nb);
 	    sf_check_gpu_error("sponge Kernel");
 	    spongeKernel_2D<<<dimGrid2, dimBlock2>>>(d_ppo, nxpad, nzpad, nb);
-            sf_check_gpu_error("sponge Kernel");
+        sf_check_gpu_error("sponge Kernel");
 
 	    // FREE SURFACE
 	    freeSurf_2D<<<dimGrid2, dimBlock2>>>(d_po, nxpad, nzpad, nb);
@@ -432,7 +421,7 @@ int main(int argc, char*argv[]) {
     sf_oaxa(Fdat, at, 2);
     sf_oaxa(Fdat, ar, 1);
 
-    sf_floatwrite(h_dd_pp, nsmp*nr*sizeof(float), Fdat);    
+    sf_floatwrite(h_dd_pp, nsmp*nr, Fdat);    
     
     // FREE ALLOCATED MEMORY
     cudaFree(d_ww);
