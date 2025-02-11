@@ -23,6 +23,8 @@ static void sf_check_gpu_error (const char *msg) {
 // entry
 int main(int argc, char*argv[]) {
 
+    // --- DEFINE VARS ---------------------------------------------------------------
+
     // define input variables from sconstruct
     bool fsrf, snap, bnds, dabc;
     int jsnap, jdata;
@@ -61,6 +63,9 @@ int main(int argc, char*argv[]) {
 
     // linear interpolation of weights and indicies
     lint3d cs, cr;
+
+
+    // --- OPEN FILES -----------------------------------------------------------------
 
     sf_init(argc, argv);
 
@@ -133,6 +138,9 @@ int main(int argc, char*argv[]) {
     sf_warning("reading receiver data %d times", nsmp);
 
     sf_warning("nb: %d", nb);
+
+
+    // --- WAVEFIELD PARAMS ---------------------------------------------------------------
     
     if(snap) {
 
@@ -168,7 +176,9 @@ int main(int argc, char*argv[]) {
 
     }
 
-    // MOVE SOURCE WAVELET INTO THE GPU
+
+    // --- SOURCE -> GPU -------------------------------------------------------------------- 
+
     ncs = 1;
     float *ww = NULL;
     ww = sf_floatalloc(nt); // allocate var for ncs dims over nt time
@@ -185,7 +195,9 @@ int main(int argc, char*argv[]) {
     sf_check_gpu_error("cudaMalloc source wavelet to device");
     cudaMemcpy(d_ww, h_ww, ncs*nt*sizeof(float), cudaMemcpyHostToDevice);
 
-    // SET UP SOURCE / RECEIVER COORDS
+
+    // --- ALLOCATE FOR SOURCE / RECIEVER PARAMS ---------------------------------------------
+
     pt3d *ss=NULL;
     pt3d *rr=NULL;
 
@@ -228,6 +240,9 @@ int main(int argc, char*argv[]) {
     cudaMalloc((void**)&d_Rjph, nr * sizeof(int));
     sf_check_gpu_error("cudaMalloc receiver coords to device");
 
+    
+    // --- VELOCITY -------------------------------------------------------------------------
+
     // allocate memory to import velocity data
     float *tt1 = (float*)malloc(nra * nth * nph * sizeof(float));
     
@@ -239,11 +254,17 @@ int main(int argc, char*argv[]) {
     cudaMemcpy(d_vel, h_vel, nthpad*nrapad*nphpad*sizeof(float), cudaMemcpyHostToDevice);
     sf_check_gpu_error("copy velocity to device");
 
+
+    // --- RECEVIER DATA ALLOC --------------------------------------------------------------
+
     // CREATE DATA ARRAYS FOR RECEIVERS
     float *d_dd_pp; float *h_dd_pp;
     h_dd_pp = (float*)malloc(nsmp * nr * sizeof(float));
     cudaMalloc((void**)&d_dd_pp, nsmp * nr * sizeof(float));
     sf_check_gpu_error("allocate data arrays");
+
+
+    // --- WAVEFIELD ALLOC -----------------------------------------------------------------
 
     // allocate pressure arrays for past, present and future on GPU's
     cudaMalloc((void**)&d_ppo, nthpad*nphpad*nrapad*sizeof(float));
@@ -258,8 +279,10 @@ int main(int argc, char*argv[]) {
         po = sf_floatalloc3(nrapad, nthpad, nphpad);
     
     }
+
+
+    // --- ONE WAY BC ----------------------------------------------------------------------
     
-    // SET UP ONE WAY BOUND CONDITIONS
     float *one_bthl = sf_floatalloc(nrapad * nphpad);
     float *one_bthh = sf_floatalloc(nrapad * nphpad);
     float *one_bral = sf_floatalloc(nthpad * nphpad);
@@ -319,7 +342,8 @@ int main(int argc, char*argv[]) {
 	pt3dread1(Fsou, ss, ns, 3);
 	pt3dread1(Frec, rr, nr, 3);
 
-	// SET SOURCES ON GPU
+
+	// --- SET SOURCES ON GPU ---------------------------------------------------------------
 
 	// perform 3d linear interpolation on source
 	cs = lint3d_make(ns, ss, fdm);
@@ -339,7 +363,9 @@ int main(int argc, char*argv[]) {
 	cudaMemcpy(d_Sjph, cs->jy, ns * sizeof(int), cudaMemcpyHostToDevice);
 	sf_check_gpu_error("copy source coords to device");
 
-	// SET RECEIVERS ON THE GPU
+
+	// --- SET RECEIVERS ON GPU -------------------------------------------------------------
+
 	cr = lint3d_make(nr, rr, fdm);
 
 	cudaMemcpy(d_Rw000, cr->w000, nr * sizeof(float), cudaMemcpyHostToDevice);
@@ -358,6 +384,8 @@ int main(int argc, char*argv[]) {
     sf_check_gpu_error("copy receiver coords to device");
 
 
+    // --- EMPTY ARRAYS ---------------------------------------------------------------------
+
 	// set pressure to 0 on gpu
 	cudaMemset(d_ppo, 0, nthpad*nphpad*nrapad*sizeof(float));
 	cudaMemset(d_po , 0, nthpad*nphpad*nrapad*sizeof(float));
@@ -371,7 +399,9 @@ int main(int argc, char*argv[]) {
 	    h_dd_pp[i] = 0.f;
 	}
 
-	// TIME LOOP
+
+	// --- TIME LOOP -------------------------------------------------------------------------
+
 	fprintf(stderr,"total num of time steps: %d \n", nt);
 	for (it=0; it<nt; it++) {
 

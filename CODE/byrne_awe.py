@@ -79,6 +79,9 @@ def param(par):
 # Read dict params
 
 def awepar(par):
+
+    param(par)
+
     awe = ' ' + \
           '''
           ompchunk=%(ompchunk)d ompnth=%(ompnth)d
@@ -151,7 +154,7 @@ def wavelet(wav,frq,custom,par):
 # variable-density acoustic FD modeling
 def awefd2d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     
-    if nGPU > 10: # if gpu's are detected run the gpu code
+    if nGPU > 0: # if gpu's are detected run the gpu code
 
         Flow([odat, owfl], [idat, velo, sou, rec],
             f"{path}sfAWEFDcart2Dgpu" + 
