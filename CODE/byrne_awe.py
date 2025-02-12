@@ -70,6 +70,11 @@ def param(par):
     # Default gpu
     if 'gpu'       not in par: par['gpu']=gpu
 
+    if nGPU > 0:
+        par['useGPU'] = 'y'
+    else:
+        par['useGPU'] = 'n'
+
     # Wavefield axis:
     if 'xz'      not in par: par['xz']='n'
 
