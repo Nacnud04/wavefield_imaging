@@ -71,7 +71,7 @@ int main(int argc, char*argv[]) {
     if(! sf_getbool("free",&fsrf)) fsrf=false; /* free surface flag */
     if(! sf_getbool("dabc",&dabc)) dabc=false; /* absorbing BC */
     if(! sf_getbool("snap",&snap)) snap=true;
-    if(! sf_getbool("bnds",&bnds)) bnds=true;
+    if(! sf_getbool("bnds",&bnds)) bnds=false;
     sf_warning("Free Surface: %b", fsrf);
     sf_warning("Absorbing Boundaries: %b", dabc);
 
@@ -384,8 +384,10 @@ int main(int argc, char*argv[]) {
             sf_check_gpu_error("sponge Kernel");
 
 	    // FREE SURFACE
-	    freeSurf_2D<<<dimGrid2, dimBlock2>>>(d_po, nxpad, nzpad, nb);
-	    sf_check_gpu_error("freeSurf Kernel");
+        if (fsrf) {
+            freeSurf_2D<<<dimGrid2, dimBlock2>>>(d_po, nxpad, nzpad, nb);
+            sf_check_gpu_error("freeSurf Kernel");
+        }
 
 	    if (snap && it%jsnap==0) {
 

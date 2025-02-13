@@ -65,7 +65,7 @@ int main(int argc, char*argv[]) {
     if(! sf_getbool("free",&fsrf)) fsrf=false; /* free surface flag */
     if(! sf_getbool("dabc",&dabc)) dabc=false; /* absorbing BC */
     if(! sf_getbool("snap",&snap)) snap=true;
-    if(! sf_getbool("bnds",&bnds)) bnds=true;
+    if(! sf_getbool("bnds",&bnds)) bnds=false;
     sf_warning("Free Surface: %b", fsrf);
     sf_warning("Absorbing Boundaries: %b", dabc);
 
