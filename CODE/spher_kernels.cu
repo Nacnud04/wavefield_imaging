@@ -208,16 +208,16 @@ __global__ void inject_sources_3D(float *d_po, float *d_ww,
                 int s_y = d_Sjy[ss];
                 int s_z = d_Sjz[ss];
 
-                int xz = nxpad * nzpad;
+                size_t xz = nxpad * nzpad;
 
-                d_po[s_y*xz + s_z*nxpad         + s_x  ] += wa * d_Sw000[ss];
-                d_po[s_y*xz + (s_z+1)*nxpad     + s_x  ] += wa * d_Sw001[ss];
-                d_po[s_y*xz + s_z*nxpad         + s_x+1] += wa * d_Sw010[ss];
-                d_po[s_y*xz + (s_z+1)*nxpad     + s_x+1] += wa * d_Sw011[ss];
-                d_po[(s_y+1)*xz + s_z*nxpad     + s_x  ] += wa * d_Sw100[ss];
-                d_po[(s_y+1)*xz + (s_z+1)*nxpad + s_x  ] += wa * d_Sw101[ss];
-                d_po[(s_y+1)*xz + s_z*nxpad     + s_x+1] += wa * d_Sw110[ss];
-                d_po[(s_y+1)*xz + (s_z+1)*nxpad + s_x+1] += wa * d_Sw111[ss];
+                d_po[xz*s_y     + s_z*nxpad     + s_x  ] += wa * d_Sw000[ss];
+                d_po[xz*s_y     + (s_z+1)*nxpad + s_x  ] += wa * d_Sw001[ss];
+                d_po[xz*s_y     + s_z*nxpad     + s_x+1] += wa * d_Sw010[ss];
+                d_po[xz*s_y     + (s_z+1)*nxpad + s_x+1] += wa * d_Sw011[ss];
+                d_po[xz*(s_y+1) + s_z*nxpad     + s_x  ] += wa * d_Sw100[ss];
+                d_po[xz*(s_y+1) + (s_z+1)*nxpad + s_x  ] += wa * d_Sw101[ss];
+                d_po[xz*(s_y+1) + s_z*nxpad     + s_x+1] += wa * d_Sw110[ss];
+                d_po[xz*(s_y+1) + (s_z+1)*nxpad + s_x+1] += wa * d_Sw111[ss];
 
         }
 }
@@ -411,7 +411,7 @@ __global__ void extract_2D(float *d_dd_pp,
 	int rr = threadIdx.x + blockIdx.x * blockDim.x;
 	// time offset
 	// avoids rewriting over previously received data
-	int offset = it * nr;
+	size_t offset = (size_t)it * (size_t)nr;
 
 	// only perform if the receiver number represents an actual existing receiver
 	if (rr < nr){
@@ -439,7 +439,7 @@ __global__ void extract_3D(float *d_dd_pp,
 				   float *d_Rw100, float *d_Rw101, float *d_Rw110, float *d_Rw111) {
 
 	int rr = threadIdx.x + blockIdx.x * blockDim.x;
-	int offset = it * nr;
+	size_t offset = (size_t)it * (size_t)nr;
 
 	if (rr < nr){
 

@@ -20,6 +20,21 @@ static void sf_check_gpu_error (const char *msg) {
 	sf_error ("Cuda error: %s: %s", msg, cudaGetErrorString (err));
 }
 
+static void sf_check_gpu_mem(size_t aMEM) {
+
+    size_t fMEM,tMEM;    /* GPU memory */
+    
+    // available memory
+    cudaMemGetInfo( &fMEM, &tMEM );
+    tMEM /= 1e6;
+    fMEM /= 1e6;
+
+    size_t aMEMM = aMEM / 1e6;
+
+    sf_warning("||||| GPU available memory: %6zu MB of %6zu MB",fMEM,tMEM);
+    sf_warning("||||| GPU requested memory: %6zu MB", aMEMM);
+}
+
 // entry
 int main(int argc, char*argv[]) {
 
@@ -94,13 +109,13 @@ int main(int argc, char*argv[]) {
     cudaSetDevice(gpu);
 
     // set up axis
-    at  = sf_iaxa(Fwav,2); sf_setlabel(at ,"t" ); // time
-    ara = sf_iaxa(Fvel,1); sf_setlabel(ara,"ra"); // radius
-    ath = sf_iaxa(Fvel,2); sf_setlabel(ath,"th"); // theta
-    aph = sf_iaxa(Fvel,3); sf_setlabel(aph,"ph"); // phi
+    at  = sf_iaxa(Fwav,2); sf_setlabel(at ,"t" ); sf_raxa(at);  // time
+    ara = sf_iaxa(Fvel,1); sf_setlabel(ara,"ra"); sf_raxa(ara); // radius
+    ath = sf_iaxa(Fvel,2); sf_setlabel(ath,"th"); sf_raxa(ath); // theta
+    aph = sf_iaxa(Fvel,3); sf_setlabel(aph,"ph"); sf_raxa(aph); // phi
 
-    as  = sf_iaxa(Fsou,2); sf_setlabel(as ,"s" ); // sources
-    ar  = sf_iaxa(Frec,2); sf_setlabel(ar ,"r" ); // receivers
+    as  = sf_iaxa(Fsou,2); sf_setlabel(as ,"s" ); sf_raxa(as); // sources
+    ar  = sf_iaxa(Frec,2); sf_setlabel(ar ,"r" ); sf_raxa(ar); // receivers
 
     awt = at;
 
@@ -112,8 +127,8 @@ int main(int argc, char*argv[]) {
     ns  = sf_n(as);
     nr  = sf_n(ar);
 
-    sf_warning("nra:%d|nth:%d|nph:%d|nt:%d|ns:%d|nr:%d",nra,nth,nph,nt,ns,nr);
-    sf_warning("dra:%f|dth:%f|dph:%f|dt:%f", dra, dth, dph, dt);
+    //sf_warning("nra:%d|nth:%d|nph:%d|nt:%d|ns:%d|nr:%d",nra,nth,nph,nt,ns,nr);
+    //sf_warning("dra:%f|dth:%f|dph:%f|dt:%f", dra, dth, dph, dt);
 
     
     // define increase in domain of model for boundary conditions
@@ -184,16 +199,16 @@ int main(int argc, char*argv[]) {
     ww = sf_floatalloc(nt); // allocate var for ncs dims over nt time
     sf_floatread(ww, nt, Fwav); // read wavelet into allocated mem
 
-    float *h_ww;
-    h_ww = (float*)malloc(nt*sizeof(float));
-    for (int t = 0; t < nt; t++) {
-        h_ww[t] = ww[t];
-    }
+    //float *h_ww;
+    //h_ww = (float*)malloc(nt*sizeof(float));
+    //for (int t = 0; t < nt; t++) {
+    //    h_ww[t] = ww[t];
+    //}
 
     float *d_ww;
     cudaMalloc((void**)&d_ww, ncs*nt*sizeof(float));
     sf_check_gpu_error("cudaMalloc source wavelet to device");
-    cudaMemcpy(d_ww, h_ww, ncs*nt*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_ww, ww, ncs*nt*sizeof(float), cudaMemcpyHostToDevice);
 
 
     // --- ALLOCATE FOR SOURCE / RECIEVER PARAMS ---------------------------------------------
@@ -257,20 +272,31 @@ int main(int argc, char*argv[]) {
 
     // --- RECEVIER DATA ALLOC --------------------------------------------------------------
 
+    size_t sizN = (size_t)nsmp * (size_t)nr * sizeof(float);
+
+    sf_warning("||||| === RECEIVER ALLOC ===");
+    sf_check_gpu_mem(sizN);
+
     // CREATE DATA ARRAYS FOR RECEIVERS
     float *d_dd_pp; float *h_dd_pp;
-    h_dd_pp = (float*)malloc(nsmp * nr * sizeof(float));
-    cudaMalloc((void**)&d_dd_pp, nsmp * nr * sizeof(float));
+    h_dd_pp = (float*)malloc(sizN);
+    cudaMalloc((void**)&d_dd_pp, sizN);
     sf_check_gpu_error("allocate data arrays");
 
 
     // --- WAVEFIELD ALLOC -----------------------------------------------------------------
 
+    sf_warning("||||| === WAVEFIELD ALLOC ===");
+
+    size_t wavN = (size_t)nthpad * (size_t)nphpad * (size_t)nrapad * sizeof(float);
+
+    sf_check_gpu_mem(wavN * 3);
+
     // allocate pressure arrays for past, present and future on GPU's
-    cudaMalloc((void**)&d_ppo, nthpad*nphpad*nrapad*sizeof(float));
-    cudaMalloc((void**)&d_po , nthpad*nphpad*nrapad*sizeof(float));
-    cudaMalloc((void**)&d_fpo, nthpad*nphpad*nrapad*sizeof(float));
-    h_po=(float*)malloc(nthpad * nrapad * nphpad * sizeof(float));
+    cudaMalloc((void**)&d_ppo, wavN);
+    cudaMalloc((void**)&d_po , wavN);
+    cudaMalloc((void**)&d_fpo, wavN);
+    h_po=(float*)malloc(wavN);
     sf_check_gpu_error("allocate pressure arrays");
     
     if (snap) {
@@ -387,9 +413,9 @@ int main(int argc, char*argv[]) {
     // --- EMPTY ARRAYS ---------------------------------------------------------------------
 
 	// set pressure to 0 on gpu
-	cudaMemset(d_ppo, 0, nthpad*nphpad*nrapad*sizeof(float));
-	cudaMemset(d_po , 0, nthpad*nphpad*nrapad*sizeof(float));
-	cudaMemset(d_fpo, 0, nthpad*nphpad*nrapad*sizeof(float));
+	cudaMemset(d_ppo, 0, wavN);
+	cudaMemset(d_po , 0, wavN);
+	cudaMemset(d_fpo, 0, wavN);
 	sf_check_gpu_error("Set pressure arrays to 0");
 
 	// set receiver data to 0
@@ -408,7 +434,6 @@ int main(int argc, char*argv[]) {
 	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
 	    // INJECT PRESSURE SOURCE
-        
         dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1, 1);
 	    dim3 dimBlockS(MIN(ns, 1024), 1, 1);
         inject_sources_3D<<<dimGridS, dimBlockS>>>(d_po, d_ww, 
@@ -416,8 +441,8 @@ int main(int argc, char*argv[]) {
 			    d_Sw100, d_Sw101, d_Sw110, d_Sw111, 
 			    d_Sjra, d_Sjph, d_Sjth, 
 			    it, ns, nrapad, nphpad, nthpad);
-        sf_check_gpu_error("inject_sources Kernel");
-
+        sf_check_gpu_error("inject_sources_3D Kernel");
+        
 	    dim3 dimGrid2(ceil(nrapad/8.0f),ceil(nphpad/8.0f),ceil(nthpad/8.0f));
 	    dim3 dimBlock2(8,8,8);
         
@@ -451,6 +476,7 @@ int main(int argc, char*argv[]) {
         }
 		
 	    // RECEIVERS
+        
 	    dim3 dimGridR(MIN(nr, ceil(nr/1024.0f)), 1, 1);
 	    dim3 dimBlockR(MIN(nr, 1024), 1, 1);
 	    extract_3D<<<dimGridR, dimBlockR>>>(d_dd_pp, it, nr,
@@ -458,8 +484,8 @@ int main(int argc, char*argv[]) {
                 d_po, d_Rjra, d_Rjph, d_Rjth,
                 d_Rw000, d_Rw001, d_Rw010, d_Rw011,
                 d_Rw100, d_Rw101, d_Rw110, d_Rw111);
-        sf_check_gpu_error("lint3d_extract_gpu Kernel");
-
+        sf_check_gpu_error("extract_3D Kernel");
+        
 	    // EXTRACT WAVEFIELD EVERY JSNAP STEPS
 	    if (snap && it % jsnap == 0) {
 
@@ -473,6 +499,7 @@ int main(int argc, char*argv[]) {
             }
             
 	    }	    
+        sf_check_gpu_error("wavefield extraction");
 
 	}
 
@@ -480,7 +507,7 @@ int main(int argc, char*argv[]) {
 
     fprintf(stderr,"\n");
 
-    cudaMemcpy(h_dd_pp, d_dd_pp, nsmp*nr*sizeof(float), cudaMemcpyDefault);
+    cudaMemcpy(h_dd_pp, d_dd_pp, sizN, cudaMemcpyDefault);
 
     sf_setn(ar, nr);
     sf_setn(at, nsmp);
@@ -489,7 +516,7 @@ int main(int argc, char*argv[]) {
     sf_oaxa(Fdat, at, 2);
     sf_oaxa(Fdat, ar, 1);
 
-    sf_floatwrite(h_dd_pp, nsmp*nr, Fdat);
+    sf_floatwrite(h_dd_pp, (size_t)nsmp * (size_t)nr, Fdat);
 
     // FREE GPU MEMORY
 
