@@ -41,7 +41,7 @@ int main(int argc, char*argv[]) {
     // --- DEFINE VARS ---------------------------------------------------------------
 
     // define input variables from sconstruct
-    bool fsrf, snap, bnds, dabc;
+    bool fsrf, snap, bnds, dabc, adj;
     int jsnap, jdata;
 
     // define IO files
@@ -55,7 +55,7 @@ int main(int argc, char*argv[]) {
 
     // define axis
     sf_axis at, awt, ara, ath, aph, acra, acth, acph; // time, radius, theta, phi
-    sf_axis as, ar;
+    sf_axis as, ar, aw;
 
     // define dimension sizes
     int nt, nra, nth, nph, ns, nr, ncs, nb;
@@ -89,9 +89,11 @@ int main(int argc, char*argv[]) {
     if(! sf_getbool("snap",&snap)) snap=false;
     if(! sf_getbool("dabc",&dabc)) dabc=false; /* absorbing BC */
     if(! sf_getbool("bnds",&bnds)) bnds=false;
+    if(! sf_getbool("adj",&adj)) adj=false;
     sf_warning("Free Surface: %b", fsrf);
     sf_warning("Absorbing Boundaries: %b", dabc);
     sf_warning("Saving wavefield? %b", snap);
+    sf_warning("Adjoint: %b", adj);
 
     // IO
     Fwav = sf_input("in");
@@ -109,27 +111,25 @@ int main(int argc, char*argv[]) {
     cudaSetDevice(gpu);
 
     // set up axis
+    aw  = sf_iaxa(Fwav,1); sf_setlabel(aw ,"w" ); sf_raxa(aw);  // wavelets
     at  = sf_iaxa(Fwav,2); sf_setlabel(at ,"t" ); sf_raxa(at);  // time
     ara = sf_iaxa(Fvel,1); sf_setlabel(ara,"ra"); sf_raxa(ara); // radius
     ath = sf_iaxa(Fvel,2); sf_setlabel(ath,"th"); sf_raxa(ath); // theta
     aph = sf_iaxa(Fvel,3); sf_setlabel(aph,"ph"); sf_raxa(aph); // phi
 
-    as  = sf_iaxa(Fsou,2); sf_setlabel(as ,"s" ); sf_raxa(as); // sources
     ar  = sf_iaxa(Frec,2); sf_setlabel(ar ,"r" ); sf_raxa(ar); // receivers
+    as  = sf_iaxa(Fsou,2); sf_setlabel(as ,"s" ); sf_raxa(as); // sources
 
-    awt = at;
+    awt = at; // make a copy of axis for wavefield
 
     nt  = sf_n(at ); dt  = sf_d(at );
     nra = sf_n(ara); dra = sf_d(ara);
     nth = sf_n(ath); dth = sf_d(ath);
     nph = sf_n(aph); dph = sf_d(aph);
     
+    ncs = sf_n(aw);
     ns  = sf_n(as);
     nr  = sf_n(ar);
-
-    //sf_warning("nra:%d|nth:%d|nph:%d|nt:%d|ns:%d|nr:%d",nra,nth,nph,nt,ns,nr);
-    //sf_warning("dra:%f|dth:%f|dph:%f|dt:%f", dra, dth, dph, dt);
-
     
     // define increase in domain of model for boundary conditions
     if( !sf_getint("nb",&nb) || nb<NOP) nb=NOP;
@@ -150,9 +150,9 @@ int main(int argc, char*argv[]) {
     // how often to extract receiver data?
     if(! sf_getint("jdata",&jdata)) jdata=1;
     int nsmp = (nt/jdata);
-    sf_warning("reading receiver data %d times", nsmp);
+    sf_warning("Extracting to receivers %d times", nsmp);
 
-    sf_warning("nb: %d", nb);
+    sf_warning("Padding size: %d", nb);
 
 
     // --- WAVEFIELD PARAMS ---------------------------------------------------------------
@@ -192,24 +192,16 @@ int main(int argc, char*argv[]) {
     }
 
 
-    // --- SOURCE -> GPU -------------------------------------------------------------------- 
+    // --- SOURCE -> GPU --------------------------------------------------------------------
 
-    ncs = 1;
-    float *ww = NULL;
-    ww = sf_floatalloc(nt); // allocate var for ncs dims over nt time
-    sf_floatread(ww, nt, Fwav); // read wavelet into allocated mem
-
-    //float *h_ww;
-    //h_ww = (float*)malloc(nt*sizeof(float));
-    //for (int t = 0; t < nt; t++) {
-    //    h_ww[t] = ww[t];
-    //}
+    float *h_ww = NULL;
+    h_ww = sf_floatalloc(nt * ncs); // allocate var for ncs dims over nt time
+    sf_floatread(h_ww, nt * ncs, Fwav); // read wavelet into allocated mem
 
     float *d_ww;
     cudaMalloc((void**)&d_ww, ncs*nt*sizeof(float));
     sf_check_gpu_error("cudaMalloc source wavelet to device");
-    cudaMemcpy(d_ww, ww, ncs*nt*sizeof(float), cudaMemcpyHostToDevice);
-
+    cudaMemcpy(d_ww, h_ww, ncs*nt*sizeof(float), cudaMemcpyHostToDevice);
 
     // --- ALLOCATE FOR SOURCE / RECIEVER PARAMS ---------------------------------------------
 
@@ -357,17 +349,12 @@ int main(int argc, char*argv[]) {
     cudaMemcpy(d_bphh, one_bphh, nthpad*nrapad*sizeof(float), cudaMemcpyHostToDevice);
     sf_check_gpu_error("copy one way bc conditions to device");
 
-    // ITERATE OVER SHOTS
-    // CURRENTLY ONLY 1 TO SET ALL SHOTS AT ONCE
-    for (int isrc = 0; isrc < 1; isrc ++) {
-
 	// read source and receiver coordinates
 	// in the pt3d struct there is X, Y and Z. The same convention is
 	// used here to transform into spherical coordinates (X:Radius,
 	// Y:Phi, Z:Theta)
 	pt3dread1(Fsou, ss, ns, 3);
 	pt3dread1(Frec, rr, nr, 3);
-
 
 	// --- SET SOURCES ON GPU ---------------------------------------------------------------
 
@@ -429,65 +416,80 @@ int main(int argc, char*argv[]) {
 	// --- TIME LOOP -------------------------------------------------------------------------
 
 	fprintf(stderr,"total num of time steps: %d \n", nt);
+
 	for (it=0; it<nt; it++) {
 
-	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
+	    // INJECT PRESSURE SOURCES
+        if (adj) {
+            int adjt = nt - it;
+            fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d     ", adjt-1);
+            dim3 dimGridS(MIN(nr, ceil(nr/1024.0f)), 1, 1);
+	        dim3 dimBlockS(MIN(nr, 1024), 1, 1);
+            inject_sources_3D_adj<<<dimGridS, dimBlockS>>>(d_po, d_ww, 
+			    d_Rw000, d_Rw001, d_Rw010, d_Rw011, 
+			    d_Rw100, d_Rw101, d_Rw110, d_Rw111, 
+			    d_Rjra, d_Rjph, d_Rjth, 
+			    adjt, nr, nrapad, nphpad, nthpad);
+            sf_check_gpu_error("inject_sources_3D Kernel");
+        }
+        else {
+            fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d      ", it+1);
+            dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1, 1);
+            dim3 dimBlockS(MIN(ns, 1024), 1, 1);
+            inject_sources_3D<<<dimGridS, dimBlockS>>>(d_po, d_ww, 
+                    d_Sw000, d_Sw001, d_Sw010, d_Sw011, 
+                    d_Sw100, d_Sw101, d_Sw110, d_Sw111, 
+                    d_Sjra, d_Sjph, d_Sjth, 
+                    it, ns, nrapad, nphpad, nthpad);
+            sf_check_gpu_error("inject_sources_3D Kernel");
+        }
 
-	    // INJECT PRESSURE SOURCE
-        dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1, 1);
-	    dim3 dimBlockS(MIN(ns, 1024), 1, 1);
-        inject_sources_3D<<<dimGridS, dimBlockS>>>(d_po, d_ww, 
-			    d_Sw000, d_Sw001, d_Sw010, d_Sw011, 
-			    d_Sw100, d_Sw101, d_Sw110, d_Sw111, 
-			    d_Sjra, d_Sjph, d_Sjth, 
-			    it, ns, nrapad, nphpad, nthpad);
-        sf_check_gpu_error("inject_sources_3D Kernel");
+        dim3 dimGrid2(ceil(nrapad/8.0f),ceil(nphpad/8.0f),ceil(nthpad/8.0f));
+        dim3 dimBlock2(8,8,8);
         
-	    dim3 dimGrid2(ceil(nrapad/8.0f),ceil(nphpad/8.0f),ceil(nthpad/8.0f));
-	    dim3 dimBlock2(8,8,8);
-        
-	    // APPLY WAVE EQUATION
-	    solve_3D<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
+        // APPLY WAVE EQUATION
+        solve_3D<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
                 d_vel,
                 dra, dph, dth, ora, oph, oth, dt,
                 nrapad, nphpad, nthpad);
-	    sf_check_gpu_error("solve Kernel");
+        sf_check_gpu_error("solve Kernel");
 
-	    // SHIFT PRESSURE FIELDS IN TIME
-	    shift_3D<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
+        // SHIFT PRESSURE FIELDS IN TIME
+        shift_3D<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
                 nrapad, nphpad, nthpad);
-	    sf_check_gpu_error("shift Kernel");
+        sf_check_gpu_error("shift Kernel");
 
-	    // ONE WAY BC
-	    onewayBC_3D<<<dimGrid2,dimBlock2>>>(d_po, d_ppo,
+        // ONE WAY BC
+        onewayBC_3D<<<dimGrid2,dimBlock2>>>(d_po, d_ppo,
                 d_bthl, d_bthh, d_bral, d_brah, d_bphl, d_bphh,
                 nrapad, nphpad, nthpad);
 
-	    // SPONGE
-	    spongeKernel_3D<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
-	    sf_check_gpu_error("sponge Kernel1");
-	    spongeKernel_3D<<<dimGrid2, dimBlock2>>>(d_ppo, nrapad, nphpad, nthpad, nb);
+        // SPONGE
+        spongeKernel_3D<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
+        sf_check_gpu_error("sponge Kernel1");
+        spongeKernel_3D<<<dimGrid2, dimBlock2>>>(d_ppo, nrapad, nphpad, nthpad, nb);
         sf_check_gpu_error("sponge Kernel2");
 
-	    // FREE SURFACE
+        // FREE SURFACE
         if (fsrf) {
             freeSurf_3D<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
             sf_check_gpu_error("free surface Kernel");
         }
-		
-	    // RECEIVERS
         
-	    dim3 dimGridR(MIN(nr, ceil(nr/1024.0f)), 1, 1);
-	    dim3 dimBlockR(MIN(nr, 1024), 1, 1);
-	    extract_3D<<<dimGridR, dimBlockR>>>(d_dd_pp, it, nr,
-                nrapad, nphpad, nthpad, 
-                d_po, d_Rjra, d_Rjph, d_Rjth,
-                d_Rw000, d_Rw001, d_Rw010, d_Rw011,
-                d_Rw100, d_Rw101, d_Rw110, d_Rw111);
-        sf_check_gpu_error("extract_3D Kernel");
-        
-	    // EXTRACT WAVEFIELD EVERY JSNAP STEPS
-	    if (snap && it % jsnap == 0) {
+        // RECEIVERS
+        if (!adj) {
+            dim3 dimGridR(MIN(nr, ceil(nr/1024.0f)), 1, 1);
+            dim3 dimBlockR(MIN(nr, 1024), 1, 1);
+            extract_3D<<<dimGridR, dimBlockR>>>(d_dd_pp, it, nr,
+                    nrapad, nphpad, nthpad, 
+                    d_po, d_Rjra, d_Rjph, d_Rjth,
+                    d_Rw000, d_Rw001, d_Rw010, d_Rw011,
+                    d_Rw100, d_Rw101, d_Rw110, d_Rw111);
+            sf_check_gpu_error("extract_3D Kernel");
+        }
+
+        // EXTRACT WAVEFIELD EVERY JSNAP STEPS
+        if (snap && it % jsnap == 0) {
 
             cudaMemcpy(h_po, d_po, nrapad * nphpad * nthpad * sizeof(float), cudaMemcpyDefault);
 
@@ -498,25 +500,42 @@ int main(int argc, char*argv[]) {
                 sf_floatwrite(oslice[0][0], sf_n(ath)*sf_n(ara)*sf_n(aph), Fwfl);
             }
             
-	    }	    
-        sf_check_gpu_error("wavefield extraction");
+        }	    
+
+        // IF ADJOINT EXTRACT WAVEFIELD AS FINAL IMAGE
+        if  (adj && it == nt-1) {
+
+            cudaMemcpy(h_po, d_po, nrapad * nphpad * nthpad * sizeof(float), cudaMemcpyDeviceToHost);
+
+            cut3d(po, oslice, fdm, ath, ara, aph);
+
+            sf_oaxa(Fdat, ath, 2);
+            sf_oaxa(Fdat, ara, 1);
+            sf_oaxa(Fdat, aph, 3);
+
+            sf_floatwrite(oslice[0][0], sf_n(ath)*sf_n(ara)*sf_n(aph), Fdat);
+
+        }
+
 
 	}
 
-    }
-
     fprintf(stderr,"\n");
 
-    cudaMemcpy(h_dd_pp, d_dd_pp, sizN, cudaMemcpyDefault);
+    if (!adj) {
 
-    sf_setn(ar, nr);
-    sf_setn(at, nsmp);
-    sf_setd(at, dt*jdata);
+        cudaMemcpy(h_dd_pp, d_dd_pp, sizN, cudaMemcpyDefault);
 
-    sf_oaxa(Fdat, at, 2);
-    sf_oaxa(Fdat, ar, 1);
+        sf_setn(ar, nr);
+        sf_setn(at, nsmp);
+        sf_setd(at, dt*jdata);
 
-    sf_floatwrite(h_dd_pp, (size_t)nsmp * (size_t)nr, Fdat);
+        sf_oaxa(Fdat, at, 2);
+        sf_oaxa(Fdat, ar, 1);
+
+        sf_floatwrite(h_dd_pp, (size_t)nsmp * (size_t)nr, Fdat);
+
+    }
 
     // FREE GPU MEMORY
 

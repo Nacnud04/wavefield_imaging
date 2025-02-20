@@ -222,6 +222,39 @@ __global__ void inject_sources_3D(float *d_po, float *d_ww,
         }
 }
 
+__global__ void inject_sources_3D_adj(float *d_po, float *d_ww, 
+        float *d_Sw000, float *d_Sw001, float *d_Sw010, float *d_Sw011, 
+        float *d_Sw100, float *d_Sw101, float *d_Sw110, float *d_Sw111, 
+        int *d_Sjx, int *d_Sjy, int *d_Sjz, 
+        int it, int ns,
+        int nxpad, int nypad, int nzpad) {
+
+        int ss = threadIdx.x + blockIdx.x * blockDim.x;
+
+        size_t index = (size_t)it * (size_t)ns + ss;
+
+        float wa = d_ww[index];
+
+        if (ss < ns) {
+
+                int s_x = d_Sjx[ss];
+                int s_y = d_Sjy[ss];
+                int s_z = d_Sjz[ss];
+
+                size_t xz = nxpad * nzpad;
+
+                d_po[xz*s_y     + s_z*nxpad     + s_x  ] += wa * d_Sw000[ss];
+                d_po[xz*s_y     + (s_z+1)*nxpad + s_x  ] += wa * d_Sw001[ss];
+                d_po[xz*s_y     + s_z*nxpad     + s_x+1] += wa * d_Sw010[ss];
+                d_po[xz*s_y     + (s_z+1)*nxpad + s_x+1] += wa * d_Sw011[ss];
+                d_po[xz*(s_y+1) + s_z*nxpad     + s_x  ] += wa * d_Sw100[ss];
+                d_po[xz*(s_y+1) + (s_z+1)*nxpad + s_x  ] += wa * d_Sw101[ss];
+                d_po[xz*(s_y+1) + s_z*nxpad     + s_x+1] += wa * d_Sw110[ss];
+                d_po[xz*(s_y+1) + (s_z+1)*nxpad + s_x+1] += wa * d_Sw111[ss];
+
+}
+}
+
 
 // divergence 3d for cpml
 #define NOP 4 // half of the order in space

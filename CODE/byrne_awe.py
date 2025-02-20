@@ -33,6 +33,7 @@ def param(par):
     if 'expl'      not in par: par['expl']='n'
     if 'gaus'      not in par: par['gaus']='y'
     if 'sinc'      not in par: par['sinc']='n'
+    if 'adj'       not in par: par['adj'] ='n'
 
     if 'fdorder'      not in par: par['fdorder']=4
     if 'optfd'        not in par: par['optfd']='n'
@@ -94,6 +95,7 @@ def awepar(par):
           dabc=%(dabc)s nb=%(nb)d
           snap=%(snap)s jsnap=%(jsnap)d
           bnds=%(bnds)s expl=%(expl)s 
+          adj=%(adj)s
           '''%par + ' '
     return awe
 
@@ -102,7 +104,7 @@ def awepargpu(par):
           '''
           jdata=%(jdata)d dabc=%(dabc)s free=%(free)s
           snap=%(snap)s bnds=%(bnds)s jsnap=%(jsnap)d
-          nb=%(nb)d gpu=%(gpu)d
+          nb=%(nb)d gpu=%(gpu)d adj=%(adj)s
           '''%par + ' '
     return awe
 
