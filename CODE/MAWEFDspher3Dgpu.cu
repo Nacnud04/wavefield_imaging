@@ -73,7 +73,6 @@ int main(int argc, char*argv[]) {
     
     // vars for wavefield return
     float *h_po;
-    float ***po=NULL;
     float ***oslice=NULL;
 
     // linear interpolation of weights and indicies
@@ -134,6 +133,23 @@ int main(int argc, char*argv[]) {
     // define increase in domain of model for boundary conditions
     if( !sf_getint("nb",&nb) || nb<NOP) nb=NOP;
 
+    // read in the wavelet delay and correct nt if doing RTM
+    int kt; // this is the time delay of the wavelet
+    if(!sf_getint("kt", &kt) && adj) kt=0;
+
+    // --- SOURCE -> GPU --------------------------------------------------------------------
+
+    float *h_ww = NULL;
+    h_ww = sf_floatalloc(nt * ncs); // allocate var for ncs dims over nt time
+    sf_floatread(h_ww, nt * ncs, Fwav); // read wavelet into allocated mem
+
+    float *d_ww;
+    cudaMalloc((void**)&d_ww, ncs*nt*sizeof(float));
+    sf_check_gpu_error("cudaMalloc source wavelet to device");
+    cudaMemcpy(d_ww, h_ww, ncs*nt*sizeof(float), cudaMemcpyHostToDevice);
+
+    // --- INITIALIZE FDM AND SIM DOMAIN ---
+
     // init FDM
     // FDM is based on Z, X, Y. Not spherical. So we need to convert
     // to spherical. Z=Theta, X=Radius, Y=Phi
@@ -152,7 +168,7 @@ int main(int argc, char*argv[]) {
     int nsmp = (nt/jdata);
     sf_warning("Extracting to receivers %d times", nsmp);
 
-    sf_warning("Padding size: %d", nb);
+    sf_warning("Padding size: %d", fdm->nb);
 
 
     // --- WAVEFIELD PARAMS ---------------------------------------------------------------
@@ -172,7 +188,7 @@ int main(int argc, char*argv[]) {
 
         sf_warning("There are %d wavefield extractions", ntsnap);
 
-        sf_setn(awt, ntsnap);
+        sf_setn(awt, ntsnap + 1);
         sf_setd(awt, dt*jsnap);
 
         if (bnds) {
@@ -190,18 +206,6 @@ int main(int argc, char*argv[]) {
         sf_oaxa(Fwfl, awt, 4);
 
     }
-
-
-    // --- SOURCE -> GPU --------------------------------------------------------------------
-
-    float *h_ww = NULL;
-    h_ww = sf_floatalloc(nt * ncs); // allocate var for ncs dims over nt time
-    sf_floatread(h_ww, nt * ncs, Fwav); // read wavelet into allocated mem
-
-    float *d_ww;
-    cudaMalloc((void**)&d_ww, ncs*nt*sizeof(float));
-    sf_check_gpu_error("cudaMalloc source wavelet to device");
-    cudaMemcpy(d_ww, h_ww, ncs*nt*sizeof(float), cudaMemcpyHostToDevice);
 
     // --- ALLOCATE FOR SOURCE / RECIEVER PARAMS ---------------------------------------------
 
@@ -291,10 +295,9 @@ int main(int argc, char*argv[]) {
     h_po=(float*)malloc(wavN);
     sf_check_gpu_error("allocate pressure arrays");
     
-    if (snap) {
+    if (snap || adj) {
 
         oslice = sf_floatalloc3(sf_n(ara), sf_n(ath), sf_n(aph));
-        po = sf_floatalloc3(nrapad, nthpad, nphpad);
     
     }
 
@@ -415,14 +418,19 @@ int main(int argc, char*argv[]) {
 
 	// --- TIME LOOP -------------------------------------------------------------------------
 
-	fprintf(stderr,"total num of time steps: %d \n", nt);
+    // if RTM correct time axis
+    //if (adj) {
+    //    nt -= kt;
+    //}
+
+    fprintf(stderr,"total num of time steps: %d \n", nt);
 
 	for (it=0; it<nt; it++) {
 
 	    // INJECT PRESSURE SOURCES
         if (adj) {
             int adjt = nt - it;
-            fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d     ", adjt-1);
+            fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %4d", adjt-kt);
             dim3 dimGridS(MIN(nr, ceil(nr/1024.0f)), 1, 1);
 	        dim3 dimBlockS(MIN(nr, 1024), 1, 1);
             inject_sources_3D_adj<<<dimGridS, dimBlockS>>>(d_po, d_ww, 
@@ -433,7 +441,7 @@ int main(int argc, char*argv[]) {
             sf_check_gpu_error("inject_sources_3D Kernel");
         }
         else {
-            fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d      ", it+1);
+            fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
             dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1, 1);
             dim3 dimBlockS(MIN(ns, 1024), 1, 1);
             inject_sources_3D<<<dimGridS, dimBlockS>>>(d_po, d_ww, 
@@ -489,31 +497,35 @@ int main(int argc, char*argv[]) {
         }
 
         // EXTRACT WAVEFIELD EVERY JSNAP STEPS
-        if (snap && it % jsnap == 0) {
+        if ((snap && it % jsnap == 0) || (snap && it == nt-kt)) {
 
             cudaMemcpy(h_po, d_po, nrapad * nphpad * nthpad * sizeof(float), cudaMemcpyDefault);
 
             if (bnds) {
                 sf_floatwrite(h_po, nthpad*nrapad*nphpad, Fwfl);
             } else {
-                cut3d(po, oslice, fdm, ath, ara, aph);
+                cut3d_sph(h_po, oslice, fdm, ath, ara, aph);
                 sf_floatwrite(oslice[0][0], sf_n(ath)*sf_n(ara)*sf_n(aph), Fwfl);
             }
             
         }	    
 
         // IF ADJOINT EXTRACT WAVEFIELD AS FINAL IMAGE
-        if  (adj && it == nt-1) {
+        if  (adj && it == nt-kt) {
+
+            sf_warning("Extracting image...");
 
             cudaMemcpy(h_po, d_po, nrapad * nphpad * nthpad * sizeof(float), cudaMemcpyDeviceToHost);
 
-            cut3d(po, oslice, fdm, ath, ara, aph);
+            cut3d_sph(h_po, oslice, fdm, ath, ara, aph);
 
             sf_oaxa(Fdat, ath, 2);
             sf_oaxa(Fdat, ara, 1);
             sf_oaxa(Fdat, aph, 3);
 
             sf_floatwrite(oslice[0][0], sf_n(ath)*sf_n(ara)*sf_n(aph), Fdat);
+
+            break;
 
         }
 

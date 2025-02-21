@@ -643,6 +643,47 @@ void cut3d(float*** a,
 }
 
 /*------------------------------------------------------------*/
+void cut3d_sph(float* a,
+    float*** b,
+    fdm3d  fdm,
+    sf_axis cz, 
+    sf_axis cx,
+    sf_axis cy)
+/*< cut a rectangular wavefield subset >*/
+{
+ int iz,ix,iy, nz,nx,ny, jz,jx,jy;
+ int fz,fx,fy;
+
+ fz = (floor)((sf_o(cz)-fdm->ozpad)/fdm->dz +0.0001f);
+ fx = (floor)((sf_o(cx)-fdm->oxpad)/fdm->dx +0.0001f);
+ fy = (floor)((sf_o(cy)-fdm->oypad)/fdm->dy +0.0001f);
+
+ nz = sf_n(cz);
+ nx = sf_n(cx);
+ ny = sf_n(cy);
+
+ jz = floor(sf_d(cz)/fdm->dz);
+ jx = floor(sf_d(cx)/fdm->dx);
+ jy = floor(sf_d(cy)/fdm->dy);
+ 
+#ifdef _OPENMP
+#pragma omp parallel for			\
+ schedule(dynamic,fdm->ompchunk)		\
+ private(ix,iy,iz)				\
+ shared(a,b,nx,ny,nz,fx,fy,fz,jx,jy,jz)
+#endif
+ for        (iy=0;iy<ny;iy++) {
+    for     (ix=0;ix<nx;ix++) {
+        for (iz=0;iz<nz;iz++) {
+            b[iy][iz][ix] = a[(fdm->nb + ix) + 
+                              (fdm->nb + iz) * fdm->nxpad + 
+                              (fdm->nb + iy) * fdm->nxpad * fdm->nzpad];
+        }
+    }
+ }
+}
+
+/*------------------------------------------------------------*/
 void cut3d_slice(float** a,
                  float** b,
                  fdm3d  fdm,
