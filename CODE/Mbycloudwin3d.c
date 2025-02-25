@@ -8,6 +8,8 @@ Copyright (C) 2022 Colorado School of Mines
   #include <omp.h>
 #endif
 
+#include <complex.h>
+
 #define NCO 9
 #define NCG 3
 
@@ -43,20 +45,20 @@ int main(int argc, char* argv[])
   sf_file Fdou = NULL;       /* output for modeled data */
   sf_file Fo  = NULL;        /* orbit   */
 
-  sf_axis ao,ag,aw,at;          /* cube axes */
-  size_t  no,ng,nw,nt;
+  sf_axis ao,ag,aw,af;          /* cube axes */
+  size_t  no,ng,nw,nf;
   size_t  io,ig,iw;
   size_t ncount = 0;
-  int ico, it;
+  int ico, iff;
 
   pt3d       * oco   = NULL; /* orbit coordinates  */
   pt3d         gco;          /* ground coordinate  */
   vc3d         gno;          /* ground normal */
   float      * jnk   = NULL;
   float      * dgin   = NULL;
-  float      * ddin   = NULL; 
+  sf_complex * ddin   = NULL; 
   float      * dgou   = NULL;
-  float      * ddou   = NULL;
+  sf_complex * ddou   = NULL;
   bool       * fin   = NULL;
   off_t      * gwmap = NULL;
 
@@ -89,16 +91,19 @@ int main(int argc, char* argv[])
   Fgou = sf_output("out");
   Fdou = sf_output("dout");
 
+  // set the data output as complex type
+  sf_settype(Fdou, SF_COMPLEX);
+
   /* coordinate axes */
   ao = sf_iaxa(Fo ,2); sf_setlabel(ao,"o"); /* orbit */
-  at = sf_iaxa(Fdat,1); sf_setlabel(at,"t"); /* time axis*/
+  af = sf_iaxa(Fdat,2); sf_setlabel(af,"t"); /* time axis*/
   ag = sf_iaxa(Fin,2); sf_setlabel(ag,"g"); /* ground input */
   if(verb) sf_raxa(ao);
   if(verb) sf_raxa(ag);
 
   no = sf_n(ao);
   ng = sf_n(ag);
-  nt = sf_n(at);
+  nf = sf_n(af);
 
   /*------------------------------------------------------------*/
   /* orbit coordinates */
@@ -125,8 +130,10 @@ int main(int argc, char* argv[])
     if(verb) sf_warning("read model data");
     // now read in modeled data
     // this requires A LOT of memory
-    ddin = sf_floatalloc( (size_t)ng * nt);
-    sf_floatread(ddin, (size_t)ng * nt, Fdat);
+    sf_warning("ng: %d", ng);
+    sf_warning("nf: %d", nf);
+    ddin = sf_complexalloc( (size_t)ng * nf);
+    sf_complexread(ddin, (size_t)ng * nf, Fdat);
 
     // flag window points
     if(verb) sf_warning("flag window points");
@@ -170,8 +177,8 @@ int main(int argc, char* argv[])
     if(verb) sf_raxa(aw);
 
     // write header for Fdou
-    sf_oaxa(Fdou, at, 1);
-    sf_oaxa(Fgou, aw, 2);
+    sf_oaxa(Fdou, af, 2);
+    sf_oaxa(Fdou, aw, 1);
 
     // avoid empty window
     nw = SF_MAX(nw,1);
@@ -179,7 +186,7 @@ int main(int argc, char* argv[])
     // index window points
     if(verb) sf_warning("index window points");
     dgou = sf_floatalloc( nw * NCO );
-    ddou = sf_floatalloc( nw * nt);
+    ddou = sf_complexalloc( nw * nf);
     for(int i = 0; i < nw * NCO; i++) dgou[i] = 0.0;
 
     // keep indices in all cloud
@@ -212,20 +219,20 @@ int main(int argc, char* argv[])
     if(verb) sf_warning("move window data");
 #ifdef _OPENMP
   #pragma omp parallel for schedule(dynamic) \
-  private( iw, ig, it) \
-  shared(  nw, nt, dgou, dgin, gwmap)
+  private( iw, ig, iff) \
+  shared(  nw, nf, dgou, dgin, gwmap)
 #endif
     for( iw = 0; iw < nw; iw++ ) {
       ig = gwmap[ iw ];
-      for(it = 0; it < nt; it++) {
-        ddou[iw * nt + it] = ddin[ig * nt + it];
+      for(iff = 0; iff < nf; iff++) {
+        ddou[iw * nf + iff] = ddin[ig * nf + iff];
       }
     }    
 
     // write window points
     if(verb) sf_warning("write window points");
     sf_floatwrite(dgou, nw * NCO, Fgou);
-    sf_floatwrite(ddou, nw * nt,  Fdou);
+    sf_complexwrite(ddou, nw * nf,  Fdou);
 
     // deallocate arrays
     free(gwmap);
