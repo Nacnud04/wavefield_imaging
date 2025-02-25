@@ -2,6 +2,7 @@
 3D CLoud WINdowing
 Paul Sava
 Copyright (C) 2022 Colorado School of Mines
+// Updated by Duncan Byrne in 2024
 */
 #include <rsf.h>
 #ifdef _OPENMP
@@ -225,7 +226,8 @@ int main(int argc, char* argv[])
     for( iw = 0; iw < nw; iw++ ) {
       ig = gwmap[ iw ];
       for(iff = 0; iff < nf; iff++) {
-        ddou[iw * nf + iff] = ddin[ig * nf + iff];
+        //ddou[iw * nf + iff] = ddin[ig * nf + iff];
+        ddou[iff * nw + iw] = ddin[iff * ng + ig];
       }
     }    
 
