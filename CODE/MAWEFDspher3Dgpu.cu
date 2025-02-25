@@ -140,13 +140,13 @@ int main(int argc, char*argv[]) {
     // --- SOURCE -> GPU --------------------------------------------------------------------
 
     float *h_ww = NULL;
-    h_ww = sf_floatalloc(nt * ncs); // allocate var for ncs dims over nt time
-    sf_floatread(h_ww, nt * ncs, Fwav); // read wavelet into allocated mem
+    h_ww = sf_floatalloc((size_t)nt * (size_t)ncs); // allocate var for ncs dims over nt time
+    sf_floatread(h_ww, (size_t)nt * (size_t)ncs, Fwav); // read wavelet into allocated mem
 
     float *d_ww;
-    cudaMalloc((void**)&d_ww, ncs*nt*sizeof(float));
+    cudaMalloc((void**)&d_ww, (size_t)ncs * (size_t)nt * sizeof(float));
     sf_check_gpu_error("cudaMalloc source wavelet to device");
-    cudaMemcpy(d_ww, h_ww, ncs*nt*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_ww, h_ww, (size_t)ncs * (size_t)nt * sizeof(float), cudaMemcpyHostToDevice);
 
     // --- INITIALIZE FDM AND SIM DOMAIN ---
 
@@ -409,7 +409,7 @@ int main(int argc, char*argv[]) {
 	sf_check_gpu_error("Set pressure arrays to 0");
 
 	// set receiver data to 0
-	cudaMemset(d_dd_pp, 0, nsmp*nr*sizeof(float));
+	cudaMemset(d_dd_pp, 0, (size_t)nsmp * (size_t)nr * sizeof(float));
 
 	for (int i=0; i < nsmp*nr; i++) {
 	    h_dd_pp[i] = 0.f;
@@ -417,11 +417,6 @@ int main(int argc, char*argv[]) {
 
 
 	// --- TIME LOOP -------------------------------------------------------------------------
-
-    // if RTM correct time axis
-    //if (adj) {
-    //    nt -= kt;
-    //}
 
     fprintf(stderr,"total num of time steps: %d \n", nt);
 
