@@ -268,14 +268,16 @@ int main(int argc, char*argv[]) {
 
     // --- RECEVIER DATA ALLOC --------------------------------------------------------------
 
-    size_t sizN = (size_t)nsmp * (size_t)nr * sizeof(float);
+    sf_warning("nr %d", nr * sizeof(float));
+    int sizN = nr * sizeof(float);
+    sf_warning("sizN %d", sizN);
 
     sf_warning("||||| === RECEIVER ALLOC ===");
     sf_check_gpu_mem(sizN);
 
     // CREATE DATA ARRAYS FOR RECEIVERS
     float *d_dd_pp; float *h_dd_pp;
-    h_dd_pp = (float*)malloc(sizN);
+    h_dd_pp = (float*)malloc((size_t)sizN);
     cudaMalloc((void**)&d_dd_pp, sizN);
     sf_check_gpu_error("allocate data arrays");
 
@@ -409,11 +411,20 @@ int main(int argc, char*argv[]) {
 	sf_check_gpu_error("Set pressure arrays to 0");
 
 	// set receiver data to 0
-	cudaMemset(d_dd_pp, 0, (size_t)nsmp * (size_t)nr * sizeof(float));
+	cudaMemset(d_dd_pp, 0, (size_t)nr * sizeof(float));
 
-	for (int i=0; i < nsmp*nr; i++) {
+	for (int i=0; i < nr; i++) {
 	    h_dd_pp[i] = 0.f;
 	}
+
+
+    // --- PREP OUTPUT ARR for REC DATA
+    sf_setn(ar, nr);
+    sf_setn(at, nsmp);
+    sf_setd(at, dt*jdata);
+
+    sf_oaxa(Fdat, at, 2);
+    sf_oaxa(Fdat, ar, 1);
 
 
 	// --- TIME LOOP -------------------------------------------------------------------------
@@ -488,6 +499,10 @@ int main(int argc, char*argv[]) {
                     d_po, d_Rjra, d_Rjph, d_Rjth,
                     d_Rw000, d_Rw001, d_Rw010, d_Rw011,
                     d_Rw100, d_Rw101, d_Rw110, d_Rw111);
+            
+            cudaMemcpy(h_dd_pp, d_dd_pp, sizN, cudaMemcpyDefault);
+
+            sf_floatwrite(h_dd_pp, nr, Fdat);
             sf_check_gpu_error("extract_3D Kernel");
         }
 
@@ -528,21 +543,6 @@ int main(int argc, char*argv[]) {
 	}
 
     fprintf(stderr,"\n");
-
-    if (!adj) {
-
-        cudaMemcpy(h_dd_pp, d_dd_pp, sizN, cudaMemcpyDefault);
-
-        sf_setn(ar, nr);
-        sf_setn(at, nsmp);
-        sf_setd(at, dt*jdata);
-
-        sf_oaxa(Fdat, at, 2);
-        sf_oaxa(Fdat, ar, 1);
-
-        sf_floatwrite(h_dd_pp, (size_t)nsmp * (size_t)nr, Fdat);
-
-    }
 
     // FREE GPU MEMORY
 

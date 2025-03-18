@@ -472,7 +472,6 @@ __global__ void extract_3D(float *d_dd_pp,
 				   float *d_Rw100, float *d_Rw101, float *d_Rw110, float *d_Rw111) {
 
 	int rr = threadIdx.x + blockIdx.x * blockDim.x;
-	size_t offset = (size_t)it * (size_t)nr;
 
 	if (rr < nr){
 
@@ -480,7 +479,7 @@ __global__ void extract_3D(float *d_dd_pp,
 		int y_comp_1 = (d_Rjy[rr]+1) * nxpad * nzpad;
 		int z_comp = d_Rjz[rr] * nxpad;
 		int z_comp_1 = (d_Rjz[rr]+1) * nxpad;
-		d_dd_pp[offset + rr] = d_po[y_comp   + z_comp   + (d_Rjx[rr])]   * d_Rw000[rr] +
+		d_dd_pp[rr] = d_po[y_comp   + z_comp   + (d_Rjx[rr])]   * d_Rw000[rr] +
                                        d_po[y_comp   + z_comp_1 + d_Rjx[rr]]     * d_Rw001[rr] +
                                        d_po[y_comp   + z_comp   + (d_Rjx[rr]+1)] * d_Rw010[rr] +
                                        d_po[y_comp   + z_comp_1 + (d_Rjx[rr]+1)] * d_Rw011[rr] +
