@@ -41,7 +41,7 @@ int main(int argc, char*argv[]) {
     // --- DEFINE VARS ---------------------------------------------------------------
 
     // define input variables from sconstruct
-    bool fsrf, snap, bnds, dabc, adj;
+    bool fsrf, snap, bnds, dabc, adj, verb;
     int jsnap, jdata;
 
     // define IO files
@@ -89,6 +89,7 @@ int main(int argc, char*argv[]) {
     if(! sf_getbool("dabc",&dabc)) dabc=false; /* absorbing BC */
     if(! sf_getbool("bnds",&bnds)) bnds=false;
     if(! sf_getbool("adj",&adj)) adj=false;
+    if(! sf_getbool("verb",&verb)) verb=false;
     sf_warning("Free Surface: %b", fsrf);
     sf_warning("Absorbing Boundaries: %b", dabc);
     sf_warning("Saving wavefield? %b", snap);
@@ -159,7 +160,7 @@ int main(int argc, char*argv[]) {
     sf_warning("oth %f, ora %f, oph %f", fdm->ozpad, fdm->oxpad, fdm->oypad);
 
     // x, y, z pad to nrapad, nthpad, nphpad
-    int nrapad=fdm->nxpad; int nthpad=fdm->nzpad; int nphpad=fdm->nypad;
+    size_t nrapad=(size_t)fdm->nxpad; size_t nthpad=(size_t)fdm->nzpad; size_t nphpad=(size_t)fdm->nypad;
     sf_warning("nrapad: %d | nthpad: %d | nphpad: %d", nrapad, nthpad, nphpad);
     h_vel = (float*)malloc(nrapad * nthpad * nphpad * sizeof(float));
     
@@ -381,6 +382,8 @@ int main(int argc, char*argv[]) {
 	cudaMemcpy(d_Sjph, cs->jy, ns * sizeof(int), cudaMemcpyHostToDevice);
 	sf_check_gpu_error("copy source coords to device");
 
+    sf_warning("s1: x->%f y->%f z->%f", cs->jx[0], cs->jy[0], cs->jz[0]);
+
 
 	// --- SET RECEIVERS ON GPU -------------------------------------------------------------
 
@@ -401,6 +404,8 @@ int main(int argc, char*argv[]) {
     cudaMemcpy(d_Rjph, cr->jy, nr * sizeof(int), cudaMemcpyHostToDevice);
     sf_check_gpu_error("copy receiver coords to device");
 
+    sf_warning("r1: x->%f y->%f z->%f", cr->jx[0], cr->jy[0], cr->jz[0]);
+
 
     // --- EMPTY ARRAYS ---------------------------------------------------------------------
 
@@ -417,6 +422,9 @@ int main(int argc, char*argv[]) {
 	    h_dd_pp[i] = 0.f;
 	}
 
+    //cudaMemcpy(h_dd_pp, d_dd_pp, sizN, cudaMemcpyDefault);
+    //sf_check_gpu_error("test kernel spot");
+
 
     // --- PREP OUTPUT ARR for REC DATA
     sf_setn(ar, nr);
@@ -432,7 +440,7 @@ int main(int argc, char*argv[]) {
     fprintf(stderr,"total num of time steps: %d \n", nt);
 
 	for (it=0; it<nt; it++) {
-
+        
 	    // INJECT PRESSURE SOURCES
         if (adj) {
             int adjt = nt - it;
@@ -457,7 +465,7 @@ int main(int argc, char*argv[]) {
                     it, ns, nrapad, nphpad, nthpad);
             sf_check_gpu_error("inject_sources_3D Kernel");
         }
-
+        
         dim3 dimGrid2(ceil(nrapad/8.0f),ceil(nphpad/8.0f),ceil(nthpad/8.0f));
         dim3 dimBlock2(8,8,8);
         
@@ -472,11 +480,11 @@ int main(int argc, char*argv[]) {
         shift_3D<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
                 nrapad, nphpad, nthpad);
         sf_check_gpu_error("shift Kernel");
-
+        
         // ONE WAY BC
-        onewayBC_3D<<<dimGrid2,dimBlock2>>>(d_po, d_ppo,
-                d_bthl, d_bthh, d_bral, d_brah, d_bphl, d_bphh,
-                nrapad, nphpad, nthpad);
+        //onewayBC_3D<<<dimGrid2,dimBlock2>>>(d_po, d_ppo,
+        //        d_bthl, d_bthh, d_bral, d_brah, d_bphl, d_bphh,
+        //        nrapad, nphpad, nthpad);
 
         // SPONGE
         spongeKernel_3D<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
@@ -489,7 +497,7 @@ int main(int argc, char*argv[]) {
             freeSurf_3D<<<dimGrid2, dimBlock2>>>(d_po, nrapad, nphpad, nthpad, nb);
             sf_check_gpu_error("free surface Kernel");
         }
-        
+
         // RECEIVERS
         if (!adj) {
             dim3 dimGridR(MIN(nr, ceil(nr/1024.0f)), 1, 1);
@@ -499,11 +507,11 @@ int main(int argc, char*argv[]) {
                     d_po, d_Rjra, d_Rjph, d_Rjth,
                     d_Rw000, d_Rw001, d_Rw010, d_Rw011,
                     d_Rw100, d_Rw101, d_Rw110, d_Rw111);
-            
+            sf_check_gpu_error("extract_3D Kernel");
             cudaMemcpy(h_dd_pp, d_dd_pp, sizN, cudaMemcpyDefault);
 
             sf_floatwrite(h_dd_pp, nr, Fdat);
-            sf_check_gpu_error("extract_3D Kernel");
+            sf_check_gpu_error("extract_3D memcpy Kernel");
         }
 
         // EXTRACT WAVEFIELD EVERY JSNAP STEPS

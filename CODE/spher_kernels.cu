@@ -4,7 +4,7 @@
 
 #define INDEX2D(ix, iz, nx) ((ix)+(iz)*(nx))
 // macro for 1d index to simulate a 3d matrix
-#define INDEX3D(ix, iy, iz, nx, nz) ((ix)+(iz)*(nx)+(iy)*(nz)*(nx))
+#define INDEX3D(ix, iy, iz, nx, nz) ((size_t)(ix)+(size_t)(iz)*(nx)+(size_t)(iy)*(nz)*(nx))
 
 void expand_cpu_2d(float *a, float *b, int nb, int x_a, int x_b, int z_a, int z_b){
 
@@ -321,7 +321,8 @@ __global__ void solve_3D(float *d_fpo, float *d_po, float *d_ppo, float *d_vel,
 
 	if (ira < nrapad && ith < nthpad && iph < nphpad){
 		
-		int globalAddr = iph * nthpad * nrapad + ith * nrapad + ira;			  float laplace;
+		size_t globalAddr = (size_t)iph * nthpad * nrapad + (size_t)ith * nrapad + (size_t)ira;			  
+                float laplace;
 
 		// extract true location from deltas and indicies
 		float ra; float th;
@@ -408,7 +409,7 @@ __global__ void shift_3D(float *d_fpo, float *d_po, float *d_ppo,
 
 	if (ira < nrapad && iph < nphpad && ith < nthpad){
 
-		int globalAddr = iph * nthpad * nrapad + ith * nrapad + ira;
+		size_t globalAddr = (size_t)iph * nthpad * nrapad + (size_t)ith * nrapad + (size_t)ira;
 		
 		// replace ppo with po and fpo with po
 		d_ppo[globalAddr] = d_po[globalAddr];
@@ -581,7 +582,7 @@ __global__ void onewayBC_3D(float *uo, float *um,
         int iy = threadIdx.y + blockIdx.y * blockDim.y;
         int iz = threadIdx.z + blockIdx.z * blockDim.z;
 
-        int addr = iy * nxpad * nzpad + iz * nxpad + ix;
+        size_t addr = (size_t)iy * nxpad * nzpad + (size_t)iz * nxpad + (size_t)ix;
 
         if (ix < nxpad && iy < nypad && iz < nzpad) {
 
@@ -597,38 +598,39 @@ __global__ void onewayBC_3D(float *uo, float *um,
 
                 // top bc
                 if (iz <= NOP - iop) {
-                        int taddr = iy*nxpad*nzpad + (iz+1)*nxpad + ix;
+                        size_t taddr = (size_t)iy*nxpad*nzpad + (iz+1)*nxpad + ix;
                         uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
                                    d_bzl[iy*nxpad + ix];
                 }
                 // bottom bc
                 if (iz >= nzpad-NOP-1+iop) {
-                        int taddr = iy*nxpad*nzpad + (iz-1)*nxpad + ix;
+                        size_t taddr = (size_t)iy*nxpad*nzpad + (iz-1)*nxpad + ix;
                         uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
                                    d_bzh[iy*nxpad + ix];
                 }
-
+                
                 if (ix <= NOP-iop) {
-                        int taddr = iy*nxpad*nzpad + iz*nxpad + ix + 1;
+                        size_t taddr = (size_t)iy*nxpad*nzpad + iz*nxpad + ix + 1;
                         uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
                                    d_bxl[iy*nzpad + iz];
                 }
                 if (ix >= nxpad-NOP-1+iop) {
-                        int taddr = iy*nxpad*nzpad + iz*nxpad + ix - 1;
+                        size_t taddr = (size_t)iy*nxpad*nzpad + iz*nxpad + ix - 1;
                         uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
                                    d_bzh[iy*nzpad + iz];
                 }
 
                 if (iy <= NOP-iop) {
-                        int taddr = (iy+1)*nxpad*nzpad + iz*nxpad + ix;
+                        size_t taddr = (size_t)(iy+1)*nxpad*nzpad + iz*nxpad + ix;
                         uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
                                    d_byl[iz*nxpad + ix];
                 }
                 if (iy >= nypad-NOP-1+iop) {
-                        int taddr = (iy-1)*nxpad*nzpad + iz*nxpad + ix;
+                        size_t taddr = (size_t)(iy-1)*nxpad*nzpad + iz*nxpad + ix;
                         uo[addr] = um[taddr] + (um[addr] - uo[taddr]) *
                                    d_byh[iz*nxpad + ix];
                 }
+                
         }
 
 }
@@ -691,7 +693,7 @@ __global__ void spongeKernel_3D(float *d_po, int nxpad, int nypad, int nzpad, in
         // apply sponge
         if (x < nxpad && y < nypad && z < nzpad) {
 
-                int addr = y * nxpad * nzpad + z * nxpad + x;
+                size_t addr = (size_t)y * nxpad * nzpad + (size_t)z * nxpad + x;
 
                 // apply to low values
                 if (x < nb || y < nb || z < nb){
