@@ -58,7 +58,8 @@ int main(int argc, char*argv[]) {
     sf_axis as, ar, aw;
 
     // define dimension sizes
-    int nt, nra, nth, nph, ns, nr, ncs, nb;
+    int nt, ns, nr, ncs, nb;
+    size_t nra, nth, nph;
     int it;
     float dt, dra, dth, dph;
 
@@ -255,6 +256,8 @@ int main(int argc, char*argv[]) {
     
     // --- VELOCITY -------------------------------------------------------------------------
 
+    sf_warning("Expanding domain to account for padding");
+
     // allocate memory to import velocity data
     float *tt1 = (float*)malloc(nra * nth * nph * sizeof(float));
     
@@ -382,8 +385,6 @@ int main(int argc, char*argv[]) {
 	cudaMemcpy(d_Sjph, cs->jy, ns * sizeof(int), cudaMemcpyHostToDevice);
 	sf_check_gpu_error("copy source coords to device");
 
-    sf_warning("s1: x->%f y->%f z->%f", cs->jx[0], cs->jy[0], cs->jz[0]);
-
 
 	// --- SET RECEIVERS ON GPU -------------------------------------------------------------
 
@@ -403,8 +404,6 @@ int main(int argc, char*argv[]) {
     cudaMemcpy(d_Rjra, cr->jx, nr * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_Rjph, cr->jy, nr * sizeof(int), cudaMemcpyHostToDevice);
     sf_check_gpu_error("copy receiver coords to device");
-
-    sf_warning("r1: x->%f y->%f z->%f", cr->jx[0], cr->jy[0], cr->jz[0]);
 
 
     // --- EMPTY ARRAYS ---------------------------------------------------------------------

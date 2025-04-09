@@ -186,8 +186,8 @@ int main(int argc, char* argv[])
 
     // index window points
     if(verb) sf_warning("index window points");
-    dgou = sf_floatalloc( nw * NCO );
-    ddou = sf_complexalloc( nw * nf);
+    dgou = sf_floatalloc((size_t)nw * NCO );
+    ddou = sf_complexalloc((size_t)nw * nf);
     for(int i = 0; i < nw * NCO; i++) dgou[i] = 0.0;
 
     // keep indices in all cloud
@@ -212,7 +212,7 @@ int main(int argc, char* argv[])
     for( iw = 0; iw < nw; iw++ ) {
       ig = gwmap[ iw ];
       for(ico = 0; ico < NCO; ico++) {
-        dgou[iw * NCO + ico] = dgin[ig * NCO + ico];
+        dgou[(size_t)iw * NCO + ico] = dgin[(size_t)ig * NCO + ico];
       }
     }
 
@@ -227,14 +227,14 @@ int main(int argc, char* argv[])
       ig = gwmap[ iw ];
       for(iff = 0; iff < nf; iff++) {
         //ddou[iw * nf + iff] = ddin[ig * nf + iff];
-        ddou[iff * nw + iw] = ddin[iff * ng + ig];
+        ddou[(size_t)iff * nw + (size_t)iw] = ddin[(size_t)iff * ng + (size_t)ig];
       }
     }    
 
     // write window points
     if(verb) sf_warning("write window points");
-    sf_floatwrite(dgou, nw * NCO, Fgou);
-    sf_complexwrite(ddou, nw * nf,  Fdou);
+    sf_floatwrite(dgou, (size_t)nw * NCO, Fgou);
+    sf_complexwrite(ddou, (size_t)nw * nf,  Fdou);
 
     // deallocate arrays
     free(gwmap);
