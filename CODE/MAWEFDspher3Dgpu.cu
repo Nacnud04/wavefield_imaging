@@ -457,7 +457,7 @@ int main(int argc, char*argv[]) {
             fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
             dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1, 1);
             dim3 dimBlockS(MIN(ns, 1024), 1, 1);
-            inject_sources_3D<<<dimGridS, dimBlockS>>>(d_po, d_ww, 
+            inject_sources_3D<<<dimGridS, dimBlockS>>>(d_po, d_ww, d_vel,
                     d_Sw000, d_Sw001, d_Sw010, d_Sw011, 
                     d_Sw100, d_Sw101, d_Sw110, d_Sw111, 
                     d_Sjra, d_Sjph, d_Sjth, 

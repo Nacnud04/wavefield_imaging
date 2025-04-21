@@ -120,7 +120,7 @@ __global__ void lint3d_bell_gpu(float *d_uu, float *d_ww, float *d_Sw000, float 
 
 }
 
-__global__ void inject_sources_2D(float *d_po, float *d_ww,
+__global__ void inject_sources_2D(float *d_po, float *d_ww, float *d_vel,
 							   float *d_Sw00, float *d_Sw01, float *d_Sw10, float *d_Sw11,
 							   int *d_Sjx, int *d_Sjz,
 							   int it, int ns,
@@ -135,16 +135,38 @@ __global__ void inject_sources_2D(float *d_po, float *d_ww,
 		int s_x = d_Sjx[ss];
 		int s_z = d_Sjz[ss];
 
-		d_po[ s_z      * nxpad + s_x    ] += wa * d_Sw00[ss];
-		d_po[(s_z + 1) * nxpad + s_x    ] += wa * d_Sw01[ss];
-		d_po[ s_z      * nxpad + s_x + 1] += wa * d_Sw10[ss];
-		d_po[(s_z + 1) * nxpad + s_x + 1] += wa * d_Sw11[ss];
+		float r;
+
+		// compute the local reflectivity
+		// first find a velocity nearby which does not equal the injection spot velocity
+		if (d_vel[ s_z      * nxpad + s_x    ] != d_vel[(s_z + 1) * nxpad + s_x    ]) {
+			r = abs((d_vel[ s_z      * nxpad + s_x    ] - d_vel[(s_z + 1) * nxpad + s_x    ]) / (d_vel[ s_z      * nxpad + s_x    ] + d_vel[(s_z + 1) * nxpad + s_x    ]));
+		} else if (d_vel[ s_z      * nxpad + s_x    ] != d_vel[ s_z      * nxpad + s_x + 1]) {
+			r = abs((d_vel[ s_z      * nxpad + s_x    ] - d_vel[ s_z      * nxpad + s_x + 1]) / (d_vel[ s_z      * nxpad + s_x    ] + d_vel[ s_z      * nxpad + s_x + 1]));
+		} else if (d_vel[ s_z      * nxpad + s_x    ] != d_vel[(s_z + 1) * nxpad + s_x + 1]) {
+			r = abs((d_vel[ s_z      * nxpad + s_x    ] - d_vel[(s_z + 1) * nxpad + s_x + 1]) / (d_vel[ s_z      * nxpad + s_x    ] + d_vel[(s_z + 1) * nxpad + s_x + 1]));
+		} else if (d_vel[ s_z      * nxpad + s_x    ] != d_vel[ s_z      * nxpad + s_x - 1]) {
+			r = abs((d_vel[ s_z      * nxpad + s_x    ] - d_vel[ s_z      * nxpad + s_x - 1]) / (d_vel[ s_z      * nxpad + s_x    ] + d_vel[ s_z      * nxpad + s_x - 1]));
+		} else if (d_vel[ s_z      * nxpad + s_x    ] != d_vel[(s_z - 1) * nxpad + s_x - 1]) {
+			r = abs((d_vel[ s_z      * nxpad + s_x    ] - d_vel[(s_z - 1) * nxpad + s_x - 1]) / (d_vel[ s_z      * nxpad + s_x    ] + d_vel[(s_z - 1) * nxpad + s_x - 1]));
+		} else if (d_vel[ s_z      * nxpad + s_x    ] != d_vel[(s_z + 1) * nxpad + s_x - 1]) {
+			r = abs((d_vel[ s_z      * nxpad + s_x    ] - d_vel[(s_z + 1) * nxpad + s_x - 1]) / (d_vel[ s_z      * nxpad + s_x    ] + d_vel[(s_z + 1) * nxpad + s_x - 1]));
+		} else if (d_vel[ s_z      * nxpad + s_x    ] != d_vel[(s_z - 1) * nxpad + s_x + 1]) {
+			r = abs((d_vel[ s_z      * nxpad + s_x    ] - d_vel[(s_z - 1) * nxpad + s_x + 1]) / (d_vel[ s_z      * nxpad + s_x    ] + d_vel[(s_z - 1) * nxpad + s_x + 1]));
+		} else {
+			r = 0;
+		}
+
+		d_po[ s_z      * nxpad + s_x    ] += wa * d_Sw00[ss] * r;
+		d_po[(s_z + 1) * nxpad + s_x    ] += wa * d_Sw01[ss] * r;
+		d_po[ s_z      * nxpad + s_x + 1] += wa * d_Sw10[ss] * r;
+		d_po[(s_z + 1) * nxpad + s_x + 1] += wa * d_Sw11[ss] * r;
 
 	}
 
 }
 
-__global__ void inject_sources_3D(float *d_po, float *d_ww, 
+__global__ void inject_sources_3D(float *d_po, float *d_ww, float *d_vel,
 		float *d_Sw000, float *d_Sw001, float *d_Sw010, float *d_Sw011, 
 		float *d_Sw100, float *d_Sw101, float *d_Sw110, float *d_Sw111, 
 		int *d_Sjx, int *d_Sjy, int *d_Sjz, 
@@ -163,14 +185,79 @@ __global__ void inject_sources_3D(float *d_po, float *d_ww,
 
                 int xz = nxpad * nzpad;
 
-                d_po[s_y*xz + s_z*nxpad         + s_x  ] += wa * d_Sw000[ss];
-                d_po[s_y*xz + (s_z+1)*nxpad     + s_x  ] += wa * d_Sw001[ss];
-                d_po[s_y*xz + s_z*nxpad         + s_x+1] += wa * d_Sw010[ss];
-                d_po[s_y*xz + (s_z+1)*nxpad     + s_x+1] += wa * d_Sw011[ss];
-                d_po[(s_y+1)*xz + s_z*nxpad     + s_x  ] += wa * d_Sw100[ss];
-                d_po[(s_y+1)*xz + (s_z+1)*nxpad + s_x  ] += wa * d_Sw101[ss];
-                d_po[(s_y+1)*xz + s_z*nxpad     + s_x+1] += wa * d_Sw110[ss];
-                d_po[(s_y+1)*xz + (s_z+1)*nxpad + s_x+1] += wa * d_Sw111[ss];
+				float r;
+
+				// cardinal directions
+				if        (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[s_y*xz + (s_z+1)*nxpad     + s_x  ]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[s_y*xz + (s_z+1)*nxpad     + s_x  ]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[s_y*xz + (s_z+1)*nxpad     + s_x  ]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y+1)*xz + s_z*nxpad     + s_x  ]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y+1)*xz + s_z*nxpad     + s_x  ]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y+1)*xz + s_z*nxpad     + s_x  ]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[s_y*xz + s_z*nxpad         + s_x+1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[s_y*xz + s_z*nxpad         + s_x+1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[s_y*xz + s_z*nxpad         + s_x+1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[s_y*xz + (s_z-1)*nxpad     + s_x  ]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[s_y*xz + (s_z-1)*nxpad     + s_x  ]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[s_y*xz + (s_z-1)*nxpad     + s_x  ]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y-1)*xz + s_z*nxpad     + s_x  ]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y-1)*xz + s_z*nxpad     + s_x  ]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y-1)*xz + s_z*nxpad     + s_x  ]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[s_y*xz + s_z*nxpad         + s_x-1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[s_y*xz + s_z*nxpad         + s_x-1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[s_y*xz + s_z*nxpad         + s_x-1]));
+				}
+				// diagonals
+				else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[s_y*xz + (s_z+1)*nxpad     + s_x+1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[s_y*xz + (s_z+1)*nxpad     + s_x+1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[s_y*xz + (s_z+1)*nxpad     + s_x+1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[s_y*xz + (s_z-1)*nxpad     + s_x-1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[s_y*xz + (s_z-1)*nxpad     + s_x-1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[s_y*xz + (s_z-1)*nxpad     + s_x-1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[s_y*xz + (s_z+1)*nxpad     + s_x-1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[s_y*xz + (s_z+1)*nxpad     + s_x-1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[s_y*xz + (s_z+1)*nxpad     + s_x-1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[s_y*xz + (s_z-1)*nxpad     + s_x+1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[s_y*xz + (s_z-1)*nxpad     + s_x+1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[s_y*xz + (s_z-1)*nxpad     + s_x+1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y+1)*xz + (s_z+1)*nxpad + s_x  ]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y+1)*xz + (s_z+1)*nxpad + s_x  ]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y+1)*xz + (s_z+1)*nxpad + s_x  ]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y-1)*xz + (s_z-1)*nxpad + s_x  ]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y-1)*xz + (s_z-1)*nxpad + s_x  ]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y-1)*xz + (s_z-1)*nxpad + s_x  ]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y+1)*xz + (s_z-1)*nxpad + s_x  ]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y+1)*xz + (s_z-1)*nxpad + s_x  ]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y+1)*xz + (s_z-1)*nxpad + s_x  ]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y-1)*xz + (s_z+1)*nxpad + s_x  ]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y-1)*xz + (s_z+1)*nxpad + s_x  ]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y-1)*xz + (s_z+1)*nxpad + s_x  ]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y+1)*xz + s_z*nxpad     + s_x+1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y+1)*xz + s_z*nxpad     + s_x+1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y+1)*xz + s_z*nxpad     + s_x+1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y-1)*xz + s_z*nxpad     + s_x-1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y-1)*xz + s_z*nxpad     + s_x-1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y-1)*xz + s_z*nxpad     + s_x-1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y+1)*xz + s_z*nxpad     + s_x-1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y+1)*xz + s_z*nxpad     + s_x-1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y+1)*xz + s_z*nxpad     + s_x-1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y-1)*xz + s_z*nxpad     + s_x+1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y-1)*xz + s_z*nxpad     + s_x+1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y-1)*xz + s_z*nxpad     + s_x+1]));
+				} 
+				// corners
+				else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y+1)*xz + s_z*nxpad     + s_x-1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y+1)*xz + s_z*nxpad     + s_x-1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y+1)*xz + s_z*nxpad     + s_x-1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y+1)*xz + (s_z+1)*nxpad  + s_x+1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y+1)*xz + (s_z+1)*nxpad + s_x+1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y+1)*xz + (s_z+1)*nxpad + s_x+1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y+1)*xz + (s_z+1)*nxpad  + s_x-1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y+1)*xz + (s_z+1)*nxpad + s_x-1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y+1)*xz + (s_z+1)*nxpad + s_x-1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y+1)*xz + (s_z-1)*nxpad  + s_x+1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y+1)*xz + (s_z-1)*nxpad + s_x+1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y+1)*xz + (s_z-1)*nxpad + s_x+1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y+1)*xz + (s_z-1)*nxpad  + s_x-1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y+1)*xz + (s_z-1)*nxpad + s_x-1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y+1)*xz + (s_z-1)*nxpad + s_x-1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y-1)*xz + (s_z+1)*nxpad  + s_x+1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y-1)*xz + (s_z+1)*nxpad + s_x+1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y-1)*xz + (s_z+1)*nxpad + s_x+1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y-1)*xz + (s_z+1)*nxpad  + s_x-1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y-1)*xz + (s_z+1)*nxpad + s_x-1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y-1)*xz + (s_z+1)*nxpad + s_x-1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y-1)*xz + (s_z-1)*nxpad  + s_x+1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y-1)*xz + (s_z-1)*nxpad + s_x+1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y-1)*xz + (s_z-1)*nxpad + s_x+1]));
+				} else if (d_vel[s_y*xz + s_z*nxpad         + s_x  ] != d_vel[(s_y-1)*xz + (s_z-1)*nxpad  + s_x-1]) {
+					r = abs((d_vel[s_y*xz + s_z*nxpad         + s_x  ] - d_vel[(s_y-1)*xz + (s_z-1)*nxpad + s_x-1]) / (d_vel[s_y*xz + s_z*nxpad         + s_x  ] + d_vel[(s_y-1)*xz + (s_z-1)*nxpad + s_x-1]));
+				} else {
+					r = 0;
+				}
+
+                d_po[s_y*xz + s_z*nxpad         + s_x  ] += wa * d_Sw000[ss] * r;
+                d_po[s_y*xz + (s_z+1)*nxpad     + s_x  ] += wa * d_Sw001[ss] * r;
+                d_po[s_y*xz + s_z*nxpad         + s_x+1] += wa * d_Sw010[ss] * r;
+                d_po[s_y*xz + (s_z+1)*nxpad     + s_x+1] += wa * d_Sw011[ss] * r;
+                d_po[(s_y+1)*xz + s_z*nxpad     + s_x  ] += wa * d_Sw100[ss] * r;
+                d_po[(s_y+1)*xz + (s_z+1)*nxpad + s_x  ] += wa * d_Sw101[ss] * r;
+                d_po[(s_y+1)*xz + s_z*nxpad     + s_x+1] += wa * d_Sw110[ss] * r;
+                d_po[(s_y+1)*xz + (s_z+1)*nxpad + s_x+1] += wa * d_Sw111[ss] * r;
 
         }
 }

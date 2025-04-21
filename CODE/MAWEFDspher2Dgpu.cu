@@ -343,7 +343,7 @@ int main(int argc, char*argv[]) {
 	    // INJECT PRESSURE SOURCE
         dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1);
         dim3 dimBlockS(MIN(ns, 1024), 1);
-        inject_sources_2D<<<dimGridS,dimBlockS>>>(d_po, d_ww, 
+        inject_sources_2D<<<dimGridS,dimBlockS>>>(d_po, d_ww, d_vel,
                        d_Sw00, d_Sw01, d_Sw10, d_Sw11,
                        d_Sjra, d_Sjth, it, ns, nrapad, nthpad);
         sf_check_gpu_error("inject sources Kernel");
