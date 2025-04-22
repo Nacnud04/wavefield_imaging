@@ -30,7 +30,7 @@ static void sf_check_gpu_error (const char *msg) {
 int main(int argc, char*argv[]) {
 
     // define input variables from sconstruct
-    bool fsrf, snap, bnds, dabc;
+    bool fsrf, snap, bnds, dabc, expl;
     int jsnap, jdata;
 
     // define IO files
@@ -72,6 +72,7 @@ int main(int argc, char*argv[]) {
     if(! sf_getbool("dabc",&dabc)) dabc=false; /* absorbing BC */
     if(! sf_getbool("snap",&snap)) snap=true;
     if(! sf_getbool("bnds",&bnds)) bnds=true;
+    if(! sf_getbool("expl",&expl)) expl=true;
     sf_warning("Free Surface: %b", fsrf);
     sf_warning("Absorbing Boundaries: %b", dabc);
 
@@ -335,9 +336,15 @@ int main(int argc, char*argv[]) {
 	    // INJECT PRESSURE SOURCE
         dim3 dimGridS(MIN(ns, ceil(ns/1024.0f)), 1);
         dim3 dimBlockS(MIN(ns, 1024), 1);
-        inject_sources_2D<<<dimGridS,dimBlockS>>>(d_po, d_ww, d_vel,
-                       d_Sw00, d_Sw01, d_Sw10, d_Sw11,
-                       d_Sjx, d_Sjz, it, ns, fdm->nxpad, fdm->nzpad);
+        if (expl) {
+            inject_sources_2D<<<dimGridS,dimBlockS>>>(d_po, d_ww, d_vel,
+                        d_Sw00, d_Sw01, d_Sw10, d_Sw11,
+                        d_Sjx, d_Sjz, it, ns, fdm->nxpad, fdm->nzpad);
+        } else {
+            inject_sources_2D_const<<<dimGridS,dimBlockS>>>(d_po, d_ww,
+                d_Sw00, d_Sw01, d_Sw10, d_Sw11,
+                d_Sjx, d_Sjz, it, ns, fdm->nxpad, fdm->nzpad);
+        }
         sf_check_gpu_error("inject sources Kernel");
 
 	    // APPLY WAVE EQUATION

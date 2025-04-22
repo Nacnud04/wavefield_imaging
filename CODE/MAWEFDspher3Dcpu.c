@@ -12,7 +12,7 @@
 int main(int argc, char*argv[]) {
 
     // define input variables from sconstruct
-    bool fsrf, snap, bnds, dabc;
+    bool fsrf, snap, bnds, dabc, expl;
     int jsnap, jdata;
 
     // define IO files
@@ -58,6 +58,7 @@ int main(int argc, char*argv[]) {
     if(! sf_getbool("snap",&snap)) snap=false;
     if(! sf_getbool("dabc",&dabc)) dabc=false; /* absorbing BC */
     if(! sf_getbool("bnds",&bnds)) bnds=false;
+    if(! sf_getbool("expl",&expl)) expl=true;
     sf_warning("Free Surface: %b", fsrf);
     sf_warning("Absorbing Boundaries: %b", dabc);
     sf_warning("Saving wavefield? %b", snap);
@@ -303,10 +304,17 @@ int main(int argc, char*argv[]) {
         fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
         // inject pressure source
-        inject_sources_3D(h_po, h_ww, 
-                       cs->w000, cs->w001, cs->w010, cs->w011, cs->w100, cs->w101, cs->w110, cs->w111,
-                       cs->jx, cs->jy, cs->jz,
-                       it, ns, nrapad, nphpad, nthpad);
+        if (expl) {
+            inject_sources_3D(h_po, h_ww, h_vel,
+                        cs->w000, cs->w001, cs->w010, cs->w011, cs->w100, cs->w101, cs->w110, cs->w111,
+                        cs->jx, cs->jy, cs->jz,
+                        it, ns, nrapad, nphpad, nthpad);
+        } else {
+            inject_sources_3D_const(h_po, h_ww,
+                cs->w000, cs->w001, cs->w010, cs->w011, cs->w100, cs->w101, cs->w110, cs->w111,
+                cs->jx, cs->jy, cs->jz,
+                it, ns, nrapad, nphpad, nthpad);
+        }
 
         // solve wave equation
         solve_3D(h_fpo, h_po, h_ppo, h_vel,

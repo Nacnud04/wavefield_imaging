@@ -15,7 +15,7 @@
 int main(int argc, char*argv[]) {
 
     // define input variables from sconstruct
-    bool fsrf, snap, bnds, dabc;
+    bool fsrf, snap, bnds, dabc, expl;
     int jsnap, jdata;
 
     // define IO files
@@ -57,6 +57,7 @@ int main(int argc, char*argv[]) {
     if(! sf_getbool("dabc",&dabc)) dabc=false; /* absorbing BC */
     if(! sf_getbool("snap",&snap)) snap=true;
     if(! sf_getbool("bnds",&bnds)) bnds=true;
+    if(! sf_getbool("expl",&expl)) expl=true;
     sf_warning("Free Surface: %b", fsrf);
     sf_warning("Absorbing Boundaries: %b", dabc);
 
@@ -265,8 +266,13 @@ int main(int argc, char*argv[]) {
         fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %d", it+1);
 
         // inject sources
-        inject_sources_2D(h_po, h_ww, cs->w00, cs->w01, cs->w10, cs->w11,
-                       cs->jx, cs->jz, it, ns, nrapad, nthpad);
+        if (expl) {
+            inject_sources_2D(h_po, h_ww, h_vel, cs->w00, cs->w01, cs->w10, cs->w11,
+                        cs->jx, cs->jz, it, ns, nrapad, nthpad);
+        } else {
+            inject_sources_2D_const(h_po, h_ww, cs->w00, cs->w01, cs->w10, cs->w11,
+                cs->jx, cs->jz, it, ns, nrapad, nthpad);
+        }
 
         // solve for next time step
         solve_2D(h_fpo, h_po, h_ppo, h_vel, dra, dth, ora, oth, dt, nrapad, nthpad);

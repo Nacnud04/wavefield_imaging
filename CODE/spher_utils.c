@@ -103,7 +103,7 @@ void expand_cpu_3d(float *a, float *b, int nb, int x_a, int x_b, int y_a, int y_
 }
 
 // function to inject pressure from sources into pressure array
-void inject_sources_2D(float *h_po, float *h_ww,
+void inject_sources_2D_const(float *h_po, float *h_ww,
                     float *Sw00, float *Sw01, float *Sw10, float *Sw11,
                     int *Sjx, int *Sjz,
                     int it, int ns,
@@ -131,8 +131,58 @@ void inject_sources_2D(float *h_po, float *h_ww,
 
 }
 
+void inject_sources_2D(float *h_po, float *h_ww, float *h_vel,
+        float *Sw00, float *Sw01, float *Sw10, float *Sw11,
+        int *Sjx, int *Sjz,
+        int it, int ns,
+        int nxpad, int nzpad) {
+
+        float wa = h_ww[it];
+        int s_x, s_z; 
+        int ss;
+
+        // iterate over sources
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic) private(ss, s_x, s_z) shared(it, h_po, wa, nxpad, nzpad, Sjx, Sjz, Sw00, Sw01, Sw10, Sw11)
+#endif
+        for (ss = 0; ss < ns; ss++) {
+
+                s_x = Sjx[ss];
+                s_z = Sjz[ss];
+
+                float r;
+
+                // compute the local reflectivity
+                // first find a velocity nearby which does not equal the injection spot velocity
+                if (h_vel[ s_z      * nxpad + s_x    ] != h_vel[(s_z + 1) * nxpad + s_x    ]) {
+                r = fabs((h_vel[ s_z      * nxpad + s_x    ] - h_vel[(s_z + 1) * nxpad + s_x    ]) / (h_vel[ s_z      * nxpad + s_x    ] + h_vel[(s_z + 1) * nxpad + s_x    ]));
+                } else if (h_vel[ s_z      * nxpad + s_x    ] != h_vel[ s_z      * nxpad + s_x + 1]) {
+                r = fabs((h_vel[ s_z      * nxpad + s_x    ] - h_vel[ s_z      * nxpad + s_x + 1]) / (h_vel[ s_z      * nxpad + s_x    ] + h_vel[ s_z      * nxpad + s_x + 1]));
+                } else if (h_vel[ s_z      * nxpad + s_x    ] != h_vel[(s_z + 1) * nxpad + s_x + 1]) {
+                r = fabs((h_vel[ s_z      * nxpad + s_x    ] - h_vel[(s_z + 1) * nxpad + s_x + 1]) / (h_vel[ s_z      * nxpad + s_x    ] + h_vel[(s_z + 1) * nxpad + s_x + 1]));
+                } else if (h_vel[ s_z      * nxpad + s_x    ] != h_vel[ s_z      * nxpad + s_x - 1]) {
+                r = fabs((h_vel[ s_z      * nxpad + s_x    ] - h_vel[ s_z      * nxpad + s_x - 1]) / (h_vel[ s_z      * nxpad + s_x    ] + h_vel[ s_z      * nxpad + s_x - 1]));
+                } else if (h_vel[ s_z      * nxpad + s_x    ] != h_vel[(s_z - 1) * nxpad + s_x - 1]) {
+                r = fabs((h_vel[ s_z      * nxpad + s_x    ] - h_vel[(s_z - 1) * nxpad + s_x - 1]) / (h_vel[ s_z      * nxpad + s_x    ] + h_vel[(s_z - 1) * nxpad + s_x - 1]));
+                } else if (h_vel[ s_z      * nxpad + s_x    ] != h_vel[(s_z + 1) * nxpad + s_x - 1]) {
+                r = fabs((h_vel[ s_z      * nxpad + s_x    ] - h_vel[(s_z + 1) * nxpad + s_x - 1]) / (h_vel[ s_z      * nxpad + s_x    ] + h_vel[(s_z + 1) * nxpad + s_x - 1]));
+                } else if (h_vel[ s_z      * nxpad + s_x    ] != h_vel[(s_z - 1) * nxpad + s_x + 1]) {
+                r = fabs((h_vel[ s_z      * nxpad + s_x    ] - h_vel[(s_z - 1) * nxpad + s_x + 1]) / (h_vel[ s_z      * nxpad + s_x    ] + h_vel[(s_z - 1) * nxpad + s_x + 1]));
+                } else {
+                r = 0;
+                }
+
+                h_po[ s_z      * nxpad + s_x    ] += wa * Sw00[ss] * r;
+                h_po[(s_z + 1) * nxpad + s_x    ] += wa * Sw01[ss] * r;
+                h_po[ s_z      * nxpad + s_x + 1] += wa * Sw10[ss] * r;
+                h_po[(s_z + 1) * nxpad + s_x + 1] += wa * Sw11[ss] * r;
+
+        }
+
+}
+
 // function to inject many sources
-void inject_sources_3D(float *po, float *ww, 
+void inject_sources_3D_const(float *po, float *ww, 
                 float *Sw000, float *Sw001, float *Sw010, float *Sw011, 
                 float *Sw100, float *Sw101, float *Sw110, float *Sw111, 
                 int *Sjx, int *Sjy, int *Sjz, 
@@ -168,6 +218,109 @@ void inject_sources_3D(float *po, float *ww,
 
     }
 }
+
+void inject_sources_3D(float *po, float *ww, float *h_vel,
+        float *Sw000, float *Sw001, float *Sw010, float *Sw011, 
+        float *Sw100, float *Sw101, float *Sw110, float *Sw111, 
+        int *Sjx, int *Sjy, int *Sjz, 
+        int it, int ns,
+        int nxpad, int nypad, int nzpad) {
+
+        int ss;
+
+        float wa = ww[it];
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic) \
+        private(ss) \
+        shared(wa, po, Sw000, Sw001, Sw010, Sw011, Sw100, Sw101, Sw110, Sw111, Sjx, Sjy, Sjz, ns, nxpad, nypad, nzpad)
+#endif
+
+        for (ss = 0; ss < ns; ss++) {
+
+                int s_x = Sjx[ss];
+                int s_y = Sjy[ss];
+                int s_z = Sjz[ss];
+
+                int xz = nxpad * nzpad;
+
+                float r;
+
+                // cardinal directions
+                if        (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[s_y*xz + (s_z+1)*nxpad     + s_x  ]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[s_y*xz + (s_z+1)*nxpad     + s_x  ]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[s_y*xz + (s_z+1)*nxpad     + s_x  ]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y+1)*xz + s_z*nxpad     + s_x  ]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y+1)*xz + s_z*nxpad     + s_x  ]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y+1)*xz + s_z*nxpad     + s_x  ]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[s_y*xz + s_z*nxpad         + s_x+1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[s_y*xz + s_z*nxpad         + s_x+1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[s_y*xz + s_z*nxpad         + s_x+1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[s_y*xz + (s_z-1)*nxpad     + s_x  ]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[s_y*xz + (s_z-1)*nxpad     + s_x  ]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[s_y*xz + (s_z-1)*nxpad     + s_x  ]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y-1)*xz + s_z*nxpad     + s_x  ]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y-1)*xz + s_z*nxpad     + s_x  ]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y-1)*xz + s_z*nxpad     + s_x  ]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[s_y*xz + s_z*nxpad         + s_x-1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[s_y*xz + s_z*nxpad         + s_x-1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[s_y*xz + s_z*nxpad         + s_x-1]));
+                }
+                // diagonals
+                else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[s_y*xz + (s_z+1)*nxpad     + s_x+1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[s_y*xz + (s_z+1)*nxpad     + s_x+1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[s_y*xz + (s_z+1)*nxpad     + s_x+1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[s_y*xz + (s_z-1)*nxpad     + s_x-1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[s_y*xz + (s_z-1)*nxpad     + s_x-1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[s_y*xz + (s_z-1)*nxpad     + s_x-1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[s_y*xz + (s_z+1)*nxpad     + s_x-1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[s_y*xz + (s_z+1)*nxpad     + s_x-1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[s_y*xz + (s_z+1)*nxpad     + s_x-1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[s_y*xz + (s_z-1)*nxpad     + s_x+1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[s_y*xz + (s_z-1)*nxpad     + s_x+1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[s_y*xz + (s_z-1)*nxpad     + s_x+1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y+1)*xz + (s_z+1)*nxpad + s_x  ]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y+1)*xz + (s_z+1)*nxpad + s_x  ]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y+1)*xz + (s_z+1)*nxpad + s_x  ]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y-1)*xz + (s_z-1)*nxpad + s_x  ]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y-1)*xz + (s_z-1)*nxpad + s_x  ]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y-1)*xz + (s_z-1)*nxpad + s_x  ]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y+1)*xz + (s_z-1)*nxpad + s_x  ]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y+1)*xz + (s_z-1)*nxpad + s_x  ]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y+1)*xz + (s_z-1)*nxpad + s_x  ]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y-1)*xz + (s_z+1)*nxpad + s_x  ]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y-1)*xz + (s_z+1)*nxpad + s_x  ]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y-1)*xz + (s_z+1)*nxpad + s_x  ]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y+1)*xz + s_z*nxpad     + s_x+1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y+1)*xz + s_z*nxpad     + s_x+1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y+1)*xz + s_z*nxpad     + s_x+1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y-1)*xz + s_z*nxpad     + s_x-1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y-1)*xz + s_z*nxpad     + s_x-1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y-1)*xz + s_z*nxpad     + s_x-1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y+1)*xz + s_z*nxpad     + s_x-1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y+1)*xz + s_z*nxpad     + s_x-1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y+1)*xz + s_z*nxpad     + s_x-1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y-1)*xz + s_z*nxpad     + s_x+1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y-1)*xz + s_z*nxpad     + s_x+1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y-1)*xz + s_z*nxpad     + s_x+1]));
+                } 
+                // corners
+                else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y+1)*xz + s_z*nxpad     + s_x-1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y+1)*xz + s_z*nxpad     + s_x-1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y+1)*xz + s_z*nxpad     + s_x-1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y+1)*xz + (s_z+1)*nxpad  + s_x+1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y+1)*xz + (s_z+1)*nxpad + s_x+1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y+1)*xz + (s_z+1)*nxpad + s_x+1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y+1)*xz + (s_z+1)*nxpad  + s_x-1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y+1)*xz + (s_z+1)*nxpad + s_x-1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y+1)*xz + (s_z+1)*nxpad + s_x-1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y+1)*xz + (s_z-1)*nxpad  + s_x+1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y+1)*xz + (s_z-1)*nxpad + s_x+1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y+1)*xz + (s_z-1)*nxpad + s_x+1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y+1)*xz + (s_z-1)*nxpad  + s_x-1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y+1)*xz + (s_z-1)*nxpad + s_x-1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y+1)*xz + (s_z-1)*nxpad + s_x-1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y-1)*xz + (s_z+1)*nxpad  + s_x+1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y-1)*xz + (s_z+1)*nxpad + s_x+1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y-1)*xz + (s_z+1)*nxpad + s_x+1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y-1)*xz + (s_z+1)*nxpad  + s_x-1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y-1)*xz + (s_z+1)*nxpad + s_x-1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y-1)*xz + (s_z+1)*nxpad + s_x-1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y-1)*xz + (s_z-1)*nxpad  + s_x+1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y-1)*xz + (s_z-1)*nxpad + s_x+1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y-1)*xz + (s_z-1)*nxpad + s_x+1]));
+                } else if (h_vel[s_y*xz + s_z*nxpad         + s_x  ] != h_vel[(s_y-1)*xz + (s_z-1)*nxpad  + s_x-1]) {
+                        r = fabs((h_vel[s_y*xz + s_z*nxpad         + s_x  ] - h_vel[(s_y-1)*xz + (s_z-1)*nxpad + s_x-1]) / (h_vel[s_y*xz + s_z*nxpad         + s_x  ] + h_vel[(s_y-1)*xz + (s_z-1)*nxpad + s_x-1]));
+                } else {
+                        r = 0;
+                }
+
+                po[s_y*xz + s_z*nxpad         + s_x  ] += wa * Sw000[ss] * r;
+                po[s_y*xz + (s_z+1)*nxpad     + s_x  ] += wa * Sw001[ss] * r;
+                po[s_y*xz + s_z*nxpad         + s_x+1] += wa * Sw010[ss] * r;
+                po[s_y*xz + (s_z+1)*nxpad     + s_x+1] += wa * Sw011[ss] * r;
+                po[(s_y+1)*xz + s_z*nxpad     + s_x  ] += wa * Sw100[ss] * r;
+                po[(s_y+1)*xz + (s_z+1)*nxpad + s_x  ] += wa * Sw101[ss] * r;
+                po[(s_y+1)*xz + s_z*nxpad     + s_x+1] += wa * Sw110[ss] * r;
+                po[(s_y+1)*xz + (s_z+1)*nxpad + s_x+1] += wa * Sw111[ss] * r;
+
+        }
+}
+
 
 
 #define NOP 4
