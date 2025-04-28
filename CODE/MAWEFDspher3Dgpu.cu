@@ -96,6 +96,7 @@ int main(int argc, char*argv[]) {
     sf_warning("Absorbing Boundaries: %b", dabc);
     sf_warning("Saving wavefield? %b", snap);
     sf_warning("Adjoint: %b", adj);
+    sf_warning("Exploding: %b", expl);
 
     // IO
     Fwav = sf_input("in");
@@ -485,9 +486,9 @@ int main(int argc, char*argv[]) {
         sf_check_gpu_error("solve Kernel");
 
         // SHIFT PRESSURE FIELDS IN TIME
-        shift_3D<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
-                nrapad, nphpad, nthpad);
-        sf_check_gpu_error("shift Kernel");
+        //shift_3D<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
+        //        nrapad, nphpad, nthpad);
+        //sf_check_gpu_error("shift Kernel");
         
         // ONE WAY BC
         //onewayBC_3D<<<dimGrid2,dimBlock2>>>(d_po, d_ppo,

@@ -145,6 +145,33 @@ __global__ void inject_sources_2D(float *d_po, float *d_ww,
 }
 
 
+__global__ void inject_sources_2D_adj(float *d_po, float *d_ww,
+	float *d_Sw00, float *d_Sw01, float *d_Sw10, float *d_Sw11,
+	int *d_Sjx, int *d_Sjz,
+	int it, int ns,
+	int nxpad, int nzpad) {
+
+	int ss = threadIdx.x + blockIdx.x * blockDim.x;
+
+	size_t index = (size_t)it * (size_t)ns + ss;
+
+	float wa = d_ww[index];
+
+	if (ss < ns) {
+
+		int s_x = d_Sjx[ss];
+		int s_z = d_Sjz[ss];
+
+		d_po[ s_z      * nxpad + s_x    ] += wa * d_Sw00[ss];
+		d_po[(s_z + 1) * nxpad + s_x    ] += wa * d_Sw01[ss];
+		d_po[ s_z      * nxpad + s_x + 1] += wa * d_Sw10[ss];
+		d_po[(s_z + 1) * nxpad + s_x + 1] += wa * d_Sw11[ss];
+
+	}
+
+}
+
+
 
 __global__ void inject_sources_2D_const(float *d_po, float *d_ww,
 								float *d_Sw00, float *d_Sw01, float *d_Sw10, float *d_Sw11,
@@ -342,6 +369,31 @@ __global__ void inject_sources_3D(float *d_po, float *d_ww, float *d_vel,
                 d_po[(s_y+1)*xz + (s_z+1)*nxpad + s_x+1] += wa * d_Sw111[ss] * r;
 
         }
+}
+
+
+__global__ void inject_sources_2D_refl(float *d_po, float *d_ww, float *d_r,
+									float *d_Sw00, float *d_Sw01, float *d_Sw10, float *d_Sw11,
+									int *d_Sjx, int *d_Sjz,
+									int it, int ns,
+									int nxpad, int nzpad) {
+
+	int ss = threadIdx.x + blockIdx.x * blockDim.x;
+
+	float wa = d_ww[it];
+
+	if (ss < ns) {
+
+		int s_x = d_Sjx[ss];
+		int s_z = d_Sjz[ss];
+
+		d_po[ s_z      * nxpad + s_x    ] += wa * d_Sw00[ss] * d_r[ s_z      * nxpad + s_x    ];
+		d_po[(s_z + 1) * nxpad + s_x    ] += wa * d_Sw01[ss] * d_r[(s_z + 1) * nxpad + s_x    ];
+		d_po[ s_z      * nxpad + s_x + 1] += wa * d_Sw10[ss] * d_r[ s_z      * nxpad + s_x + 1];
+		d_po[(s_z + 1) * nxpad + s_x + 1] += wa * d_Sw11[ss] * d_r[(s_z + 1) * nxpad + s_x + 1];
+
+	}
+
 }
 
 
