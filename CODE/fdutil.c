@@ -675,9 +675,9 @@ void cut3d_sph(float* a,
  for        (iy=0;iy<ny;iy++) {
     for     (ix=0;ix<nx;ix++) {
         for (iz=0;iz<nz;iz++) {
-            b[iy][iz][ix] = a[(fdm->nb + ix) + 
-                              (fdm->nb + iz) * fdm->nxpad + 
-                              (fdm->nb + iy) * fdm->nxpad * fdm->nzpad];
+            b[iy][iz][ix] = a[(size_t)(fdm->nb + ix) + 
+                              (size_t)(fdm->nb + iz) * (size_t)fdm->nxpad + 
+                              (size_t)(fdm->nb + iy) * (size_t)fdm->nxpad * (size_t)fdm->nzpad];
         }
     }
  }

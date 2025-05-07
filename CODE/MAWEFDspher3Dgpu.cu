@@ -147,11 +147,18 @@ int main(int argc, char*argv[]) {
     h_ww = sf_floatalloc((size_t)nt * (size_t)ncs); // allocate var for ncs dims over nt time
     sf_floatread(h_ww, (size_t)nt * (size_t)ncs, Fwav); // read wavelet into allocated mem
 
+    if (adj) {
+        sf_warning("ncs: %d", ncs);
+        sf_warning("nr: %d", nr);
+        sf_warning("||||| === SOURCE ALLOC ===");
+        sf_check_gpu_mem((size_t)ncs * (size_t)nt * sizeof(float));
+    }
+
     float *d_ww;
     cudaMalloc((void**)&d_ww, (size_t)ncs * (size_t)nt * sizeof(float));
-    sf_check_gpu_error("cudaMalloc source wavelet to device");
     cudaMemcpy(d_ww, h_ww, (size_t)ncs * (size_t)nt * sizeof(float), cudaMemcpyHostToDevice);
-
+    sf_check_gpu_error("cudaMalloc source wavelet to device");
+    
     // --- INITIALIZE FDM AND SIM DOMAIN ---
 
     // init FDM
@@ -305,7 +312,7 @@ int main(int argc, char*argv[]) {
     
     if (snap || adj) {
 
-        oslice = sf_floatalloc3(sf_n(ara), sf_n(ath), sf_n(aph));
+        oslice = sf_floatalloc3((size_t)sf_n(ara), (size_t)sf_n(ath), (size_t)sf_n(aph));
     
     }
 
@@ -437,14 +444,13 @@ int main(int argc, char*argv[]) {
 
 
 	// --- TIME LOOP -------------------------------------------------------------------------
-
     fprintf(stderr,"total num of time steps: %d \n", nt);
 
 	for (it=0; it<nt; it++) {
         
 	    // INJECT PRESSURE SOURCES
         if (adj) {
-            int adjt = nt - it;
+            int adjt = nt - it - 1;
             fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\btime step: %4d", adjt-kt);
             dim3 dimGridS(MIN(nr, ceil(nr/1024.0f)), 1, 1);
 	        dim3 dimBlockS(MIN(nr, 1024), 1, 1);
@@ -486,9 +492,9 @@ int main(int argc, char*argv[]) {
         sf_check_gpu_error("solve Kernel");
 
         // SHIFT PRESSURE FIELDS IN TIME
-        //shift_3D<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
-        //        nrapad, nphpad, nthpad);
-        //sf_check_gpu_error("shift Kernel");
+        shift_3D<<<dimGrid2, dimBlock2>>>(d_fpo, d_po, d_ppo,
+                nrapad, nphpad, nthpad);
+        sf_check_gpu_error("shift Kernel");
         
         // ONE WAY BC
         //onewayBC_3D<<<dimGrid2,dimBlock2>>>(d_po, d_ppo,
@@ -537,12 +543,12 @@ int main(int argc, char*argv[]) {
             
         }	    
 
-        // IF ADJOINT EXTRACT WAVEFIELD AS FINAL IMAGE
+        // IF ADJOINT EXTRACT WAVEFIELD AS FINAL IMAvimGE
         if  (adj && it == nt-kt) {
 
             sf_warning("Extracting image...");
 
-            cudaMemcpy(h_po, d_po, nrapad * nphpad * nthpad * sizeof(float), cudaMemcpyDeviceToHost);
+            cudaMemcpy(h_po, d_po, wavN, cudaMemcpyDeviceToHost);
 
             cut3d_sph(h_po, oslice, fdm, ath, ara, aph);
 
@@ -550,7 +556,7 @@ int main(int argc, char*argv[]) {
             sf_oaxa(Fdat, ara, 1);
             sf_oaxa(Fdat, aph, 3);
 
-            sf_floatwrite(oslice[0][0], sf_n(ath)*sf_n(ara)*sf_n(aph), Fdat);
+            sf_floatwrite(oslice[0][0], (size_t)sf_n(ath)*(size_t)sf_n(ara)*(size_t)sf_n(aph), Fdat);
 
             break;
 

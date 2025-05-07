@@ -371,7 +371,7 @@ __global__ void inject_sources_3D_adj(float *d_po, float *d_ww,
         int it, int ns,
         int nxpad, int nypad, int nzpad) {
 
-        int ss = threadIdx.x + blockIdx.x * blockDim.x;
+        size_t ss = threadIdx.x + blockIdx.x * blockDim.x;
 
         size_t index = (size_t)it * (size_t)ns + ss;
 
@@ -394,7 +394,7 @@ __global__ void inject_sources_3D_adj(float *d_po, float *d_ww,
                 d_po[(s_y+1)*xz + s_z*nxpad     + s_x+1] += wa * d_Sw110[ss];
                 d_po[(s_y+1)*xz + (s_z+1)*nxpad + s_x+1] += wa * d_Sw111[ss];
 
-}
+        }
 }
 
 
