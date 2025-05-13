@@ -23,6 +23,7 @@ AWEFDcart3Dcpu
 AWEFDspher2Dcpu
 AWEFDspher3Dcpu
 bycloudwin3d
+bycloudmerge3d
 '''
 
 targets.build_all(env, glob_build, rsfroot, bindir, libdir, pkgdir)
