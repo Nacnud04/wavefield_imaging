@@ -204,11 +204,11 @@ __global__ void inject_sources_3D_const(float *d_po, float *d_ww,
 
         if (ss < ns) {
 
-                int s_x = d_Sjx[ss];
-                int s_y = d_Sjy[ss];
-                int s_z = d_Sjz[ss];
+                size_t s_x = (size_t)d_Sjx[ss];
+                size_t s_y = (size_t)d_Sjy[ss];
+                size_t s_z = (size_t)d_Sjz[ss];
 
-                int xz = nxpad * nzpad;
+                size_t xz = nxpad * nzpad;
 
                 d_po[s_y*xz + s_z*nxpad         + s_x  ] += wa * d_Sw000[ss];
                 d_po[s_y*xz + (s_z+1)*nxpad     + s_x  ] += wa * d_Sw001[ss];
@@ -379,9 +379,9 @@ __global__ void inject_sources_3D_adj(float *d_po, float *d_ww,
 
         if (ss < ns) {
 
-                int s_x = d_Sjx[ss];
-                int s_y = d_Sjy[ss];
-                int s_z = d_Sjz[ss];
+                size_t s_x = (size_t)d_Sjx[ss];
+                size_t s_y = (size_t)d_Sjy[ss];
+                size_t s_z = (size_t)d_Sjz[ss];
 
                 size_t xz = nxpad * nzpad;
 
@@ -618,10 +618,10 @@ __global__ void extract_3D(float *d_dd_pp,
 
 	if (rr < nr){
 
-		int y_comp = d_Rjy[rr] * nxpad * nzpad;
-		int y_comp_1 = (d_Rjy[rr]+1) * nxpad * nzpad;
-		int z_comp = d_Rjz[rr] * nxpad;
-		int z_comp_1 = (d_Rjz[rr]+1) * nxpad;
+		size_t y_comp = (size_t)d_Rjy[rr] * (size_t)nxpad * (size_t)nzpad;
+		size_t y_comp_1 = (size_t)(d_Rjy[rr]+1) * (size_t)nxpad * (size_t)nzpad;
+		size_t z_comp = (size_t)d_Rjz[rr] * (size_t)nxpad;
+		size_t z_comp_1 = (size_t)(d_Rjz[rr]+1) * (size_t)nxpad;
 		d_dd_pp[rr] = d_po[y_comp   + z_comp   + (d_Rjx[rr])]   * d_Rw000[rr] +
                                        d_po[y_comp   + z_comp_1 + d_Rjx[rr]]     * d_Rw001[rr] +
                                        d_po[y_comp   + z_comp   + (d_Rjx[rr]+1)] * d_Rw010[rr] +
