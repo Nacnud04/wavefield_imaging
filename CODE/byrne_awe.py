@@ -162,7 +162,7 @@ def wavelet(wav,frq,custom,par):
 # variable-density acoustic FD modeling
 def awefd2d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     
-    if nGPU > 0: # if gpu's are detected run the gpu code
+    if nGPU > 10: # if gpu's are detected run the gpu code
 
         Flow([odat, owfl], [idat, velo, sou, rec],
             f"{path}sfAWEFDcart2Dgpu" + 
@@ -175,8 +175,8 @@ def awefd2d(odat, owfl, idat, velo, dens, sou, rec, custom, par):
     else:
         Flow([odat,owfl],[idat,velo,dens,sou,rec],
             f"{path}sfAWEFDcart2Dcpu" + '''
-            cden=n
-            vel=${SOURCES[1]} den=${SOURCES[2]}
+            cden=y
+            vel=${SOURCES[1]} 
             sou=${SOURCES[3]} rec=${SOURCES[4]}
             wfl=${TARGETS[1]}
             ''' + ' ' + awepar(par) + ' ' + custom)

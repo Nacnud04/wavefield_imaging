@@ -143,7 +143,6 @@ int main(int argc, char *argv[])
       aco[ja].x  = jnk[0]; o.x += aco[ja].x;
       aco[ja].y  = jnk[1]; o.y += aco[ja].y;
       aco[ja].z  = jnk[2]; o.z += aco[ja].z;
-      //if (ja % 100 == 0) sf_warning("Insert: Index: %llu, Point: (%f, %f, %f)", ja, aco[ja].x, aco[ja].y, aco[ja].z);
   }
   o.x /= sf_n(aa);
   o.y /= sf_n(aa);
@@ -157,12 +156,10 @@ int main(int argc, char *argv[])
     dd = sqrtf(pow( aco[ja].x - aco[ja-1].x, 2) + 
                pow( aco[ja].y - aco[ja-1].y, 2) + 
                pow( aco[ja].z - aco[ja-1].z, 2) );
-    if (dd != 0) {
-      ddMIN = SF_MIN(ddMIN, dd);
-    }
-    if (ja % 100 == 1) sf_warning("smallest point separation: %f", ddMIN);
+    ddMIN = SF_MIN(ddMIN, dd);
   }
-  sf_warning("smallest point separation: %f", ddMIN);
+
+  sf_warning("ddMIN of %f", ddMIN);
 
   /*------------------------------------------------------------*/
   // allocate all data storage
@@ -173,19 +170,17 @@ int main(int argc, char *argv[])
 
   /*------------------------------------------------------------*/
   /* define the hash table */
-  if(verb) fprintf(stderr,"hash size: %llu \n",nhash);
-  if(verb) fprintf(stderr,"make hash table over %d: ",sf_n(aa));
+  if(verb) fprintf(stderr,"make hash table: ");
   for(ja = 0; ja < sf_n(aa); ja++) {
-      fprintf(stderr,"%12llu\b\b\b\b\b\b\b\b\b\b\b\b",sf_n(aa)-ja-1);
+      if(verb && (sf_n(aa)-ja-1)%1000==0) fprintf(stderr,"%12llu\b\b\b\b\b\b\b\b\b\b\b\b",sf_n(aa)-ja-1);
       htInsert( nhash, &aco[ja], &o, ja );
   }
-  if(verb) fprintf(stderr,"done \n");
+  if(verb) fprintf(stderr,"            \n");
 
 
   /*------------------------------------------------------------*/
   /* main loop */
   /*------------------------------------------------------------*/
-  if(verb) fprintf(stderr,"main loop: ");
   for(jf = 0; jf < sf_n(af); jf++) {
     if(verb) fprintf(stderr,"%12llu\b\b\b\b\b\b\b\b\b\b\b\b",sf_n(af)-jf-1);
 
@@ -245,7 +240,7 @@ int main(int argc, char *argv[])
           sf_complexread(winC, sf_n(aw), Fdwin[0]);
         }
       }
-      
+
       // merge win clouds
       #ifdef _OPENMP
       #pragma omp parallel for schedule(dynamic) \
@@ -254,17 +249,15 @@ int main(int argc, char *argv[])
       #endif
       for(jw = 0; jw < sf_n(aw); jw++) {
           ja = htLookup( nhash, &wco[jw], &o, ddMIN);
-          if (ja != (unsigned long long)-1) {
-            if (isreal) allR[ ja ] += winR[ jw ];
-            else        allC[ ja ] += winC[ jw ];
-          }
+          if(isreal) allR[ ja ] += winR[ jw ];
+          else       allC[ ja ] += winC[ jw ];
           if(norm && jf==0) fold[ ja ]++;
       }
 
       free(wco);             // clear win cloud
       if(isreal) free(winR); // clear win data
       else       free(winC);
-      
+
       if( ! allopen ) {
         sf_fileclose(Fcwin[0]); // close cloud files
         sf_fileclose(Fdwin[0]); // close  data files
@@ -298,9 +291,12 @@ int main(int argc, char *argv[])
       sf_fileclose( Fcwin[jCLOUD] );
       sf_fileclose( Fdwin[jCLOUD] );
     }
+    free(Fcwin);
+    free(Fdwin);
+  } else {
+    free(Fcwin);
+    free(Fdwin);
   }
-  free(Fcwin);
-  free(Fdwin);
 
   sf_fileclose(Fcall);
   sf_fileclose(Fdall);

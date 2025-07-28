@@ -157,6 +157,16 @@ main(int argc, char** argv)
   ns = sf_n(as);
   nr = sf_n(ar);
 
+  if (adj) {
+    acz = sf_maxa(nz,sf_o(az),dz);
+    acx = sf_maxa(nx,sf_o(ax),dx);
+  }
+
+  // read in kt which is necessary for proper image construction
+  int kt;
+  if(!sf_getint("kt", &kt) && adj) kt=0;
+  sf_warning("kt=%d", kt);
+
   /* other execution parameters */
   if (snap) {
     if (!sf_getint("jsnap",&jsnap))  jsnap=nt;
@@ -193,6 +203,7 @@ main(int argc, char** argv)
     sf_oaxa(file_wfl,acz,1);
     sf_oaxa(file_wfl,acx,2);
     sf_oaxa(file_wfl,at,3);
+    
   }
 
   /* 2-2N finite difference coefficient */
@@ -233,7 +244,7 @@ main(int argc, char** argv)
   u_dat = sf_floatalloc(nr);
   src2d = pt2dalloc1(ns);
   rec2d = pt2dalloc1(nr);
-  if (snap) oslice = sf_floatalloc2(sf_n(acz),sf_n(acx));
+  if (snap || adj) oslice = sf_floatalloc2(sf_n(acz),sf_n(acx));
 
   /* source and receiver position */
   pt2dread1(file_src,src2d,ns,2);  /* read format: (x,z) */
@@ -256,7 +267,6 @@ main(int argc, char** argv)
     expand(tmp_array,rho,fdm);
   }
 
-  free(*tmp_array);  free(tmp_array);
 
   /* A1 one-way ABC implicit scheme coefficients  */
   if (dabc) {
@@ -299,10 +309,10 @@ main(int argc, char** argv)
         if (sinc) sinc2d_inject1_with_vv(u0,ws[0],cssinc,vel);
         else      lint2d_inject1_with_vv(u0,ws[0],cslint,vel);
       } else { 
-        sf_seek(file_wav,(off_t)(nt-it-1)*ns*sizeof(float),SEEK_SET);
-        sf_floatread(ws,ns,file_wav);
-        if (sinc) sinc2d_inject_with_vv(u0,ws,cssinc,vel);
-        else      lint2d_inject_with_vv(u0,ws,cslint,vel);
+        sf_seek(file_wav,(off_t)(nt-it-1)*nr*sizeof(float),SEEK_SET);
+        sf_floatread(ws,nr,file_wav);
+        if (sinc) sinc2d_inject_with_vv(u0,ws,crsinc,vel);
+        else      lint2d_inject_with_vv(u0,ws,crlint,vel);
       }
     } else { /* forward inject source wavelet */
       if (expl) {
@@ -339,12 +349,33 @@ main(int argc, char** argv)
       }
     }
 
+    /* if end of sim extract image */
+    if (adj && it == nt-kt) {
+
+      sf_warning("\nExtracting image...");
+
+      for (int ix=0;ix<nx;ix++) {
+        for (int iz=0;iz<nz;iz++) {
+	  oslice[ix][iz] = u0[nbd+ix][nbd+iz];
+        }
+      }
+
+      sf_oaxa(file_dat, acz, 1);
+      sf_oaxa(file_dat, acx, 2);
+
+      sf_floatwrite(oslice[0], sf_n(acz) * sf_n(acx), file_dat);
+
+      break;
+
+    }
+
     /* extract receiver data */
-    if (sinc) sinc2d_extract(u0,u_dat,crsinc);
-    else      lint2d_extract(u0,u_dat,crlint);
+    if (!adj) {
+        if (sinc) sinc2d_extract(u0,u_dat,crsinc);
+        else      lint2d_extract(u0,u_dat,crlint);
 
-    sf_floatwrite(u_dat,nr,file_dat);
-
+        sf_floatwrite(u_dat,nr,file_dat);
+    }
 #if defined _OPENMP && _DEBUG
     toc=omp_get_wtime(); 
     fprintf(stderr,"%5.2gs",(float)(toc-tic));
@@ -368,7 +399,7 @@ main(int argc, char** argv)
   if(!cden) { free(*rho); free(rho); }
   if (hybrid) free(damp);
   free(src2d); free(rec2d);
-
+  free(*tmp_array);  free(tmp_array);
   return 0;
 }
 
